@@ -10,7 +10,7 @@
 ## Environment (already set up)
 
 - Windows, Python 3, Command Prompt / PowerShell.
-- A working venv exists at `C:\Users\Subham Mishra\kavach\venv` with: pandas, scikit-learn, rapidfuzz, tldextract, streamlit, plotly.
+- A working venv exists at `C:\Users\Subham Mishra\Desktop\HACKFEST\venv` (the old kavach folder is no longer used) with: pandas, scikit-learn, rapidfuzz, tldextract, streamlit, plotly.
 - Activate (CMD): `venv\Scripts\activate`. Run the app: `streamlit run app.py` (opens http://localhost:8501).
 - If working in a new folder, create a fresh venv there and install the same packages.
 
