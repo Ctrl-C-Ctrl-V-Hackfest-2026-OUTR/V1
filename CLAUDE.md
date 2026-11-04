@@ -31,10 +31,19 @@ Rule-based risk score (0–100) per domain:
 - Verdict: ≥60 Phishing, 30–59 Suspicious, <30 Safe. Every verdict shows the reasons.
 - tldextract runs offline: `tldextract.TLDExtract(suffix_list_urls=())`.
 
-UI has two tabs:
+UI (polished for the demo; dark theme set in `.streamlit/config.toml`: primary `#22C55E`, background `#0B0F14`, secondary `#111827`, text `#E5E7EB`):
 
-- **Check one link:** text input, coloured verdict, progress bar, reasons.
-- **Check a list (CSV):** upload a CSV with a `domain` column, see a results table, a Plotly donut chart, and a download button.
+- Header: shield + "Kavach", tagline "Spot fake bank & shopping sites before you click", and "Works offline · Rules + Machine Learning". Footer: "Built by Team Ctrl-C-Ctrl-V · Hackfest 2026".
+- Three tabs: **Check a link**, **Check a list (CSV)**, **How it works**.
+- **Check a link:**
+  - Text input plus five example buttons (`paytrn.com`, `sbi-kyc-update-now.top`, `amazon.security-check.icu`, `flipkart-sale.in`, `google.com`). A button callback writes the example into `st.session_state["link_input"]`, and the check runs on the rerun.
+  - Large coloured verdict card (red Phishing 🚨, amber Suspicious ⚠️, green Safe ✅) with the final score and a custom HTML progress bar in the same colour.
+  - "Did you mean the real site: ...?" when the link imitates a brand (look-alike name, fake letters, or brand in the subdomain). It uses the first real domain in `BRANDS` (`lookalike_target()` in `app.py`).
+  - Three metrics (Rule score, ML probability, Decided by) and a one-line plain-English explanation (`explain()` in `app.py`).
+  - Reasons shown as small chips.
+- **Check a list (CSV):** upload a CSV with a `domain` column (a clear error is shown if it is missing). Shows summary counts (phishing / suspicious / safe), a results table with a red/amber/green verdict column, a Plotly donut chart and a download button.
+- **How it works:** 3 steps (Rules, then ML, then Final verdict), the model performance metrics, and the feature importance chart with human-readable labels (`FEATURE_LABELS` in `app.py`).
+- UI rules of thumb: all user-supplied text put into HTML goes through `html.escape`; Plotly charts use `config={"displayModeBar": False}`; use `width="stretch"` (not `use_container_width`, which is deprecated in Streamlit 1.66); headings use `anchor=False`.
 
 ## Machine-learning model
 
@@ -52,12 +61,12 @@ Added on the `ml-model` branch. The rule-based score above is kept; the model ad
   - ML probability >= 70%: final score = max(rule score, (rule score + ML probability × 100) / 2).
   - ML probability < 70%: final score = rule score.
   - So ML can only raise the score, never lower it. Same verdict thresholds (60 / 30).
-  - The UI shows "Verdict decided by": `Rules` or `Rules + ML` (the latter only when ML actually raised the score).
+  - The UI shows "Decided by": `Rules` or `Rules + ML` (the latter only when ML actually raised the score).
   - Official domains skip the model. If `model.joblib` is missing, the app shows the rule score only with a warning.
 - Current metrics (test set of 7,997 domains): accuracy 85.8%, precision 91.1%, recall 79.3%, F1 84.8%. Top features: length, subdomain_count, entropy, digits, dots.
 - Caveat for the pitch: much of the model's signal is domain length and subdomain structure (differences between the two data sources), not look-alike detection. The rules still do the look-alike work.
 - `model.joblib` (2.7 MB), `feature_importance.csv` and `metrics.json` are committed, so teammates do not need to retrain. `data/` is not committed.
-- The app has a "Model performance" expander with these metrics and a Plotly bar chart of the feature importances.
+- The "How it works" tab shows these metrics and a Plotly bar chart of the feature importances.
 
 `sample_domains.csv` has 10 test domains (mix of real and fake, e.g. `paytrn.com`, `amaz0n-rewards.top`, `onlinesbi-kyc-update.xyz`).
 
@@ -65,7 +74,7 @@ Added on the `ml-model` branch. The rule-based score above is kept; the model ad
 
 1. Add more brands (more Indian banks, UPI apps, government sites).
 2. Add an ML model (done on the `ml-model` branch, see the Machine-learning model section).
-3. Polish the UI for the demo: colours, layout, a clear "why it's dangerous" explanation.
+3. Polish the UI for the demo (done, see the UI description above).
 4. Prepare a demo flow: paste a fake link → red verdict with reasons → upload a CSV → show the chart.
 
 ## How to work with me
