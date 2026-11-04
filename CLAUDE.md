@@ -10,13 +10,13 @@
 ## Environment (already set up)
 
 - Windows, Python 3, Command Prompt / PowerShell.
-- A working venv exists at `C:\Users\Subham Mishra\Desktop\HACKFEST\venv` (the old kavach folder is no longer used) with: pandas, scikit-learn, rapidfuzz, tldextract, streamlit, plotly.
+- A working venv exists at `C:\Users\Subham Mishra\Desktop\HACKFEST\venv` with: pandas, scikit-learn, rapidfuzz, tldextract, streamlit, plotly.
 - Activate (CMD): `venv\Scripts\activate`. Run the app: `streamlit run app.py` (opens http://localhost:8501).
 - If working in a new folder, create a fresh venv there and install the same packages.
 
 ## Current code: `app.py` (Streamlit, working)
 
-Location: `app.py` in this repo (HACKFEST). An older starter copy at `C:\Users\Subham Mishra\kavach\app.py` is out of date. Note: an unrelated old Flask `app.py` is in Downloads. Ignore it.
+Location: `app.py` in this repo (HACKFEST). Note: an unrelated old Flask `app.py` is in Downloads. Ignore it.
 
 Rule-based risk score (0–100) per domain:
 
