@@ -13,7 +13,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from detector import explain, full_analysis, load_model, lookalike_target
+from detector import explain, full_analysis, load_model
 
 HERE = Path(__file__).parent
 
@@ -50,6 +50,14 @@ st.markdown("""<style>
 .k-step h4 {margin: 0 0 6px 0;}
 .k-count {border: 1px solid; border-radius: 12px; padding: 10px 14px; text-align: center; font-size: 1.05rem;}
 .k-footer {text-align: center; opacity: .55; font-size: .85rem; margin-top: 44px;}
+.k-ev {background: #111827; border: 1px solid #243041; border-radius: 14px; padding: 16px 20px; margin: 4px 0 14px 0;}
+.k-ev-grid {display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 24px;}
+.k-ev-label {font-size: .78rem; opacity: .7; margin-bottom: 2px;}
+.k-ev-name {font-family: ui-monospace, Consolas, monospace; font-size: 1.2rem; overflow-wrap: anywhere;}
+.k-same {color: #22C55E;}
+.k-changed {color: #EF4444; font-weight: 700; background: #EF444422; border-radius: 3px;}
+.k-missing {color: #9CA3AF; text-decoration: line-through;}
+.k-ev-edits {margin: 12px 0 0 0; padding-left: 18px; font-size: .9rem;}
 </style>""", unsafe_allow_html=True)
 
 
@@ -63,6 +71,22 @@ def style_chart(fig):
 @st.cache_resource
 def get_model():
     return load_model()
+
+
+def colored_name(parts: list) -> str:
+    """Coloured letters for the evidence box: green = same, red = changed/extra, grey = missing."""
+    return "".join(f'<span class="k-{kind}">{html.escape(text)}</span>' for text, kind in parts)
+
+
+def evidence_box(ev: dict) -> str:
+    """Side-by-side box: the genuine name, the suspicious name, and the exact edits."""
+    edits = "".join(f"<li>{html.escape(edit)}</li>" for edit in ev["edits"])
+    return (f'<div class="k-ev"><div class="k-ev-grid">'
+            f'<div><div class="k-ev-label">Genuine</div>'
+            f'<div class="k-ev-name">{colored_name(ev["real_parts"])}</div></div>'
+            f'<div><div class="k-ev-label">Suspicious</div>'
+            f'<div class="k-ev-name">{colored_name(ev["shown_parts"])}</div></div>'
+            f'</div><ul class="k-ev-edits">{edits}</ul></div>')
 
 
 def use_example(domain: str):
@@ -104,16 +128,27 @@ with tab1:
             f'</div>', unsafe_allow_html=True)
 
         # "Did you mean ...?" when the link imitates a known brand
-        target = lookalike_target(url)
+        target, ev = r["target"], r["evidence"]
         if target:
             st.markdown(f'<div class="k-hint">🔎 Did you mean the real site: '
                         f'<b>{html.escape(target)}</b>?</div>', unsafe_allow_html=True)
 
+        # The three scores the judges look for
         c1, c2, c3 = st.columns(3)
-        c1.metric("Rule score", f"{r['rule_score']}/100")
-        c2.metric("ML probability",
-                  "n/a" if r["ml_probability"] is None else f"{r['ml_probability']:.0f}%")
-        c3.metric("Decided by", r["decided_by"])
+        c1.metric(f"Closeness to {ev['nearest_genuine'] or 'any known site'}", f"{ev['closeness']}%",
+                  help="How close the name is to the nearest genuine site, after fixing fake letters. "
+                       "A real name copied whole inside a longer one counts as 100%.")
+        c2.metric("Phishing probability (ML)",
+                  "not needed" if r["ml_probability"] is None else f"{r['ml_probability']:.0f}%")
+        c3.metric("Final risk score", f"{r['score']}/100")
+        st.caption(f"Attack type: {ev['attack_label']} · Edit distance: {ev['edit_distance']} · "
+                   f"Rule score: {r['rule_score']}/100 · Decided by: {r['decided_by']}")
+
+        # Letter-by-letter evidence, only when the name really imitates a genuine site
+        if ev["shown_parts"] and not ev["is_genuine"]:
+            st.subheader("Similarity evidence", anchor=False)
+            st.markdown(evidence_box(ev), unsafe_allow_html=True)
+
         st.markdown(f'<div class="k-explain">💡 {html.escape(explain(r, target))}</div>',
                     unsafe_allow_html=True)
 
@@ -133,7 +168,10 @@ with tab2:
         if "domain" not in df.columns:
             st.error("Could not find a column named **domain** in this CSV.")
         else:
-            results = pd.DataFrame([full_analysis(str(d), bundle) for d in df["domain"]])
+            results = [full_analysis(str(d), bundle) for d in df["domain"]]
+            for row in results:  # the evidence is nested, the table needs plain columns
+                del row["evidence"]
+            results = pd.DataFrame(results)
             cols = ["url", "domain", "verdict", "score", "rule_score", "ml_probability",
                     "decided_by", "reasons"]
             results = results[cols]

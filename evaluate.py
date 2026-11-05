@@ -34,6 +34,7 @@ def main():
 
     # counts[(group, attack)] = [total, caught by the rules alone, caught finally, finally Phishing]
     counts = defaultdict(lambda: [0, 0, 0, 0])
+    named = defaultdict(int)  # how often evidence.py named the same attack type as the generator
     started = time.perf_counter()
     for genuine, lookalike, attack in fakes.itertuples(index=False):
         r = detector.full_analysis(lookalike, bundle)
@@ -43,6 +44,8 @@ def main():
         row[1] += detector.verdict_for(r["rule_score"]) in FLAGGED
         row[2] += r["verdict"] in FLAGGED
         row[3] += r["verdict"] == "Phishing"
+        named[attack] += r["evidence"]["attack_type"] == attack or (
+            attack == "keyboard_neighbour" and r["evidence"]["attack_type"] == "changed_letter")
     elapsed = time.perf_counter() - started
 
     # Real sites are on the popular list, so they would pass instantly. Turn that shortcut off to
@@ -55,14 +58,15 @@ def main():
     phishing = sum(r["verdict"] == "Phishing" for r in results)
     rule_flagged = sum(detector.verdict_for(r["rule_score"]) in FLAGGED for r in results)
 
-    print(f"{'attack type':<20}{'brands':>8}{'rules':>8}{'final':>8}{'phish':>8}   {'popular':>8}{'rules':>8}{'final':>8}{'phish':>8}")
+    print(f"{'attack type':<20}{'brands':>8}{'rules':>8}{'final':>8}{'phish':>8}   {'popular':>8}{'rules':>8}{'final':>8}{'phish':>8}{'type ok':>9}")
     table = []
     for attack in ATTACK_TYPES:
         b, p = counts[("brands", attack)], counts[("popular", attack)]
         pct = lambda row, i: row[i] / row[0] if row[0] else 0.0
+        type_ok = named[attack] / max(b[0] + p[0], 1)
         print(f"{attack:<20}{b[0]:>8}{pct(b, 1):>8.0%}{pct(b, 2):>8.0%}{pct(b, 3):>8.0%}   "
-              f"{p[0]:>8}{pct(p, 1):>8.0%}{pct(p, 2):>8.0%}{pct(p, 3):>8.0%}")
-        table.append({"attack_type": attack,
+              f"{p[0]:>8}{pct(p, 1):>8.0%}{pct(p, 2):>8.0%}{pct(p, 3):>8.0%}{type_ok:>9.0%}")
+        table.append({"attack_type": attack, "type_named_correctly": type_ok,
                       "brands": {"count": b[0], "rules": pct(b, 1), "final": pct(b, 2), "phishing": pct(b, 3)},
                       "popular": {"count": p[0], "rules": pct(p, 1), "final": pct(p, 2), "phishing": pct(p, 3)}})
 

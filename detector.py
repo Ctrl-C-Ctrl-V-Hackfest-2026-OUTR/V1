@@ -11,10 +11,11 @@ import joblib
 import pandas as pd
 
 # Brand list, scam words, look-alike logic and ML features are shared with train.py
-from features import (BRANDS, LEGIT_DOMAINS, POPULAR_SET, SUSPICIOUS_TLDS, SUSPICIOUS_WORDS,
-                      at_imitates, before_at, brand_match, decode_idn, extract_features, is_free_hosted,
-                      is_trusted_bank, one_typo_brand, parse, popular_lookalike, subdomain_brand,
-                      top_site_abuse)
+from features import (BRANDS, FEATURE_NAMES, LEGIT_DOMAINS, POPULAR_SET, SUSPICIOUS_TLDS, SUSPICIOUS_WORDS,
+                      at_imitates, before_at, brand_match, decode_idn, extract, extract_features,
+                      is_free_hosted, is_trusted_bank, normalize, one_typo_brand, parse, popular_lookalike,
+                      subdomain_brand, top_site_abuse, top_site_in_subdomain)
+from evidence import edits_between, similarity_evidence
 
 HERE = Path(__file__).parent
 OFFICIAL_REASON = "Known official domain"
@@ -86,11 +87,12 @@ def analyze(url: str) -> dict:
         typo_brand = one_typo_brand(clean)
         if is_homoglyph:
             score += 70
-            reasons.append(f"Fake letters copy '{clean}' (e.g. 0 for o, rn for m)")
+            trick = "Hyphen added to copy" if decode_idn(name).replace("-", "") == clean else "Fake letters copy"
+            reasons.append(f"{trick} '{clean}': " + ", ".join(edits_between(name, clean)))
         elif typo_brand:
             # +60 = Phishing on its own
             score += 60
-            reasons.append(f"One typo away from '{typo_brand}'")
+            reasons.append(f"One typo away from '{typo_brand}': " + ", ".join(edits_between(clean, typo_brand)))
         elif best_sim >= 80:
             score += 45
             reasons.append(f"Looks like '{best_brand}' ({best_sim:.0f}% similar) but is not the real site")
@@ -100,7 +102,13 @@ def analyze(url: str) -> dict:
             abused_site = top_site_abuse(name)
             if popular_target:
                 score += 45
-                reasons.append(f"One typo away from popular site '{popular_target}'")
+                popular_name = extract(popular_target).domain
+                if normalize(name) == popular_name:
+                    reasons.append(f"Fake letters copy popular site '{popular_target}': "
+                                   + ", ".join(edits_between(name, popular_name)))
+                else:
+                    reasons.append(f"One typo away from popular site '{popular_target}': "
+                                   + ", ".join(edits_between(name, popular_name)))
             elif abused_site:
                 score += 45
                 reasons.append(f"Uses the name of popular site '{abused_site}' but is not that site")
@@ -126,16 +134,17 @@ def analyze(url: str) -> dict:
     shown_name = decode_idn(name)  # what a person sees: the xn-- code itself has hyphens and digits
     if shown_name.count("-") >= 2:
         score += 10
-        reasons.append("Many hyphens")
-    if re.search(r"\d", shown_name):
+        reasons.append(f"Many hyphens: {shown_name.count('-')} in '{shown_name}'")
+    digits = re.findall(r"\d", shown_name)
+    if digits:
         score += 5
-        reasons.append("Digits in name")
+        reasons.append("Digits in name: " + "".join(digits))
     if len(full_host) > 30:
         score += 5
-        reasons.append("Very long domain")
+        reasons.append(f"Very long domain: {len(full_host)} characters")
     if re.fullmatch(r"[\d.]+", full_host):
         score += 30
-        reasons.append("Raw IP address instead of a name")
+        reasons.append(f"Raw IP address instead of a name: {full_host}")
 
     score = min(score, 100)
     return {"url": url, "domain": domain, "score": score, "verdict": verdict_for(score),
@@ -152,7 +161,27 @@ def load_model():
     return bundle
 
 
+def structure_facts(url: str) -> str:
+    """The facts the ML model mostly looks at, in words: '2 subdomains, 31 characters, 4 digits'."""
+    values = dict(zip(FEATURE_NAMES, extract_features(url)))
+    facts = [f"{values['subdomain_count']} subdomain{'s' if values['subdomain_count'] != 1 else ''}",
+             f"{values['length']} characters"]
+    if values["digits"]:
+        facts.append(f"{values['digits']} digit{'s' if values['digits'] != 1 else ''}")
+    if values["hyphens"]:
+        facts.append(f"{values['hyphens']} hyphen{'s' if values['hyphens'] != 1 else ''}")
+    return ", ".join(facts)
+
+
 def full_analysis(url: str, bundle) -> dict:
+    """Everything about one link: the score from score_link() plus the similarity evidence."""
+    r = score_link(url, bundle)
+    r["target"] = lookalike_target(url)
+    r["evidence"] = similarity_evidence(url, r["target"])
+    return r
+
+
+def score_link(url: str, bundle) -> dict:
     """Rule score + ML probability -> final score.
 
     If ML probability >= 70%:  final = max(rule score, average of rule score and ML x 100)
@@ -179,7 +208,7 @@ def full_analysis(url: str, bundle) -> dict:
             r["decided_by"] = "Rules + ML"
         r["verdict"] = verdict_for(r["score"])
     if p >= 0.5:
-        note = f"ML model: {r['ml_probability']:.0f}% chance of phishing"
+        note = f"ML model: {r['ml_probability']:.0f}% chance of phishing, from its structure ({structure_facts(url)})"
         r["reasons"] = note if r["reasons"] == "No red flags found" else r["reasons"] + "; " + note
     return r
 
@@ -206,7 +235,11 @@ def lookalike_target(url: str):
         brand = subdomain_brand(parts.subdomain)
     if brand:
         return BRANDS[brand][0]
-    return None if is_popular else popular_lookalike(parts.domain) or top_site_abuse(parts.domain)
+    # A popular site's own subdomains are the same owner, unless anyone can publish there
+    if is_popular and not is_free_hosted(full_host):
+        return None
+    return ((None if is_popular else popular_lookalike(parts.domain) or top_site_abuse(parts.domain))
+            or top_site_in_subdomain(parts.subdomain))
 
 
 def explain(r: dict, target) -> str:

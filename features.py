@@ -302,6 +302,14 @@ def top_site_abuse(name: str):
     return None
 
 
+def top_site_in_subdomain(subdomain: str):
+    """Return the real domain if a top-200 name is a whole word in the subdomain, else None."""
+    for word in re.split(r"[.-]", normalize(subdomain)):
+        if word in TOP_SITE_NAMES:
+            return TOP_SITE_NAMES[word]
+    return None
+
+
 # ---------------- ML features ----------------
 
 # The order of this list is the column order the model is trained on.

@@ -2,6 +2,7 @@
   "attacks": [
     {
       "attack_type": "missing_letter",
+      "type_named_correctly": 0.8665395614871306,
       "brands": {
         "count": 206,
         "rules": 1.0,
@@ -17,6 +18,7 @@
     },
     {
       "attack_type": "extra_letter",
+      "type_named_correctly": 0.8352941176470589,
       "brands": {
         "count": 215,
         "rules": 1.0,
@@ -32,6 +34,7 @@
     },
     {
       "attack_type": "swapped_letters",
+      "type_named_correctly": 0.8763819095477386,
       "brands": {
         "count": 196,
         "rules": 0.9642857142857143,
@@ -47,6 +50,7 @@
     },
     {
       "attack_type": "keyboard_neighbour",
+      "type_named_correctly": 0.8259292837715322,
       "brands": {
         "count": 215,
         "rules": 0.9302325581395349,
@@ -62,6 +66,7 @@
     },
     {
       "attack_type": "homoglyph",
+      "type_named_correctly": 0.8840579710144928,
       "brands": {
         "count": 121,
         "rules": 0.9752066115702479,
@@ -77,6 +82,7 @@
     },
     {
       "attack_type": "cyrillic",
+      "type_named_correctly": 0.9448818897637795,
       "brands": {
         "count": 186,
         "rules": 1.0,
@@ -92,6 +98,7 @@
     },
     {
       "attack_type": "hyphen",
+      "type_named_correctly": 0.7936507936507936,
       "brands": {
         "count": 201,
         "rules": 1.0,
@@ -107,6 +114,7 @@
     },
     {
       "attack_type": "combosquat",
+      "type_named_correctly": 0.7493212669683258,
       "brands": {
         "count": 215,
         "rules": 0.9906976744186047,
@@ -122,6 +130,7 @@
     },
     {
       "attack_type": "tld_swap",
+      "type_named_correctly": 0.7403100775193798,
       "brands": {
         "count": 199,
         "rules": 1.0,
@@ -137,6 +146,7 @@
     },
     {
       "attack_type": "subdomain_abuse",
+      "type_named_correctly": 0.7677224736048266,
       "brands": {
         "count": 129,
         "rules": 1.0,
@@ -158,5 +168,5 @@
     "final": 0.0575,
     "phishing": 0.0045
   },
-  "ms_per_domain": 5.68884727923383
+  "ms_per_domain": 6.416776213030294
 }
