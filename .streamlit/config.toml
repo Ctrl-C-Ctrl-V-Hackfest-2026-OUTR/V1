@@ -1,3 +1,8 @@
+[client]
+# Hide the hamburger menu and the Deploy button, so the demo looks like a product.
+# style.css hides the leftovers; the app itself still works normally.
+toolbarMode = "minimal"
+
 [theme]
 base = "dark"
 primaryColor = "#22C55E"

@@ -1,0 +1,173 @@
+message,sender,expected,category,set,note
+# Hand-written, anonymised test messages for test_rules.py. No real phone numbers or people: numbers are masked or fictional.
+# set = dev: looked at while improving the wording rules. set = holdout: written first and never used to tune them, so their pass rate is the honest one.
+# ---- KYC and account blocked ----
+"Dear customer, your HDFC account will be suspended today. Complete KYC now: hdfc-kyc-update.top",,Scam,kyc_blocked,dev
+"Your SBI YONO account is blocked. Update PAN immediately at sbi-yono-update.xyz",,Scam,kyc_blocked,dev
+"Your ICICI netbanking will expire tonight. Verify your details: bit.ly/icici-kyc",,Scam,kyc_blocked,holdout
+"Last warning: your Axis Bank a/c will be frozen in 24 hours. Update KYC here axis-login.in",,Scam,kyc_blocked,holdout
+"Aapka account block ho jayega. Abhi KYC update karein: sbi-kyc.top",,Scam,kyc_hinglish,dev
+"Aapka Paytm KYC pending hai, 24 ghante me account band ho jayega. Link: paytm-kyc-update.com",,Scam,kyc_hinglish,dev
+"Priya grahak aapka khata aaj band ho jayega, turant PAN update karo. Call 98XXXXXX10",,Scam,kyc_hinglish,holdout
+"Bhai tera bank account block hone wala hai, jaldi OTP bhej de",,Scam,kyc_hinglish,holdout
+"प्रिय ग्राहक, आपका खाता आज बंद हो जाएगा। तुरंत केवाईसी अपडेट करें: sbi-kyc-update.top",,Scam,kyc_hindi,dev
+"आपका बैंक खाता ब्लॉक कर दिया जाएगा। अभी लिंक पर क्लिक करें: hdfc-kyc.in",,Scam,kyc_hindi,dev
+"आपका पैन कार्ड अपडेट नहीं है, खाता बंद हो जाएगा। तुरंत यहां क्लिक करें bit.ly/pan-update",,Scam,kyc_hindi,holdout
+"अपना ओटीपी हमें बताएं वरना आपका खाता बंद कर दिया जाएगा",,Scam,kyc_hindi,holdout
+# ---- Electricity disconnection ----
+"Dear consumer your electricity power will be disconnected tonight at 9.30 pm. Please call officer 98XXXXXX21 immediately.",,Scam,electricity,dev
+"TPCODL: Your bill is unpaid. Power will be cut today. Pay now: tpcodl-billpay.online",,Scam,electricity,dev
+"Your electricity connection will be cut off tonight as last month bill was not updated. Contact 70XXXXXX55",,Scam,electricity,holdout
+"Bijli bill pending hai, aaj raat connection kat jayega. Turant call karein 88XXXXXX34",,Scam,electricity_hinglish,holdout
+"आपका बिजली कनेक्शन आज रात काट दिया जाएगा। तुरंत इस नंबर पर कॉल करें 98XXXXXX77",,Scam,electricity_hindi,holdout
+# ---- Parcel and customs ----
+"India Post: your parcel is on hold, address incomplete. Update within 24 hours: indiapost-redelivery.top",,Scam,parcel,dev
+"Your DTDC shipment is held at customs. Pay Rs 49 handling fee: dtdc-update.top",,Scam,parcel,dev
+"Delhivery: we could not deliver your package. Reschedule delivery and pay Rs 25 at delhivery-update.xyz",,Scam,parcel,holdout
+"Your FedEx consignment is stuck at customs. Pay customs duty to release: bit.ly/fx-duty",,Scam,parcel,holdout
+"Aapka parcel customs me ruka hua hai. Rs 99 fee bharein: indiapost-delivery.xyz",,Scam,parcel_hinglish,holdout
+# ---- e-challan and FASTag ----
+"Your vehicle has an unpaid e-challan of Rs 500. Pay within 24 hours to avoid court action: echallan-payment.xyz",,Scam,challan,dev
+"Traffic challan pending. Licence will be suspended today. Pay now: parivahan-challan.top",,Scam,challan,dev
+"RTO notice: pay your traffic fine now or your RC will be blocked. Pay at bit.ly/rto-fine",,Scam,challan,holdout,known_gap: reaches 57, just under Scam
+"Your FASTag KYC has expired and will be blacklisted today. Update at fastag-kyc.top",,Scam,fastag,dev
+"FASTag blocked due to pending KYC. Recharge now to avoid double toll: fastag-recharge.xyz",,Scam,fastag,holdout
+"Aapka challan pending hai, turant bharein warna licence cancel ho jayega: echallan-pay.top",,Scam,challan_hinglish,holdout
+# ---- Lottery and KBC ----
+"Congratulations! You won Rs 25,00,000 in KBC lottery. Claim at bit.ly/kbc-win",,Scam,lottery,dev
+"Your mobile number won Rs 15 lakh in Jio lucky draw. To claim your prize contact 90XXXXXX88 on WhatsApp",,Scam,lottery,dev
+"You have been selected for Amazon lucky draw. Pay Rs 500 registration to claim your iPhone: amazon-rewards.top",,Scam,lottery,holdout
+"Badhai ho! Aapne 25 lakh ki lottery jeeti hai. Inaam paane ke liye call karein 70XXXXXX11",,Scam,lottery_hinglish,dev
+"बधाई हो! आपने 25 लाख की लॉटरी जीती है। इनाम पाने के लिए लिंक पर क्लिक करें bit.ly/kbc25",,Scam,lottery_hindi,holdout
+# ---- Part-time job and task scams ----
+"Part time job! Earn Rs 3000 daily by liking YouTube videos. Join Telegram: t.me/earnfast99",,Scam,job_task,dev
+"Work from home opportunity, earn Rs 5000 per day. No experience. WhatsApp 98XXXXXX22",,Scam,job_task,dev
+"Hello, I am from a recruitment team. Simple online tasks, daily salary Rs 2000-8000. Contact us on telegram t.me/hrdesk00",,Scam,job_task,holdout
+"Prepaid task: invest Rs 1000 and get Rs 1500 back today. Join our group wa.me/9198XXXXXX00",,Scam,job_task,holdout
+"Ghar baithe kamaye Rs 5000 roz. Sirf video like karna hai. Join karein t.me/kamai123",,Scam,job_hinglish,dev
+"घर बैठे रोज़ 5000 रुपये कमाएं। अभी जुड़ें t.me/kamai456",,Scam,job_hindi,holdout
+# ---- Loan apps ----
+"Pre-approved loan of Rs 5,00,000 without documents. Instant approval, no CIBIL check. Apply now: quick-loan-app.top",,Scam,loan,dev
+"You are eligible for instant personal loan at 0% interest. Download the app: bit.ly/insta-loan",,Scam,loan,dev
+"Your loan of Rs 2 lakh is approved. Pay processing fee Rs 999 to receive money: loan-approve.xyz",,Scam,loan,holdout,known_gap: reaches 53, just under Scam
+"Bina CIBIL ke turant loan paayein, sirf Aadhaar se. App download karein bit.ly/turant-loan",,Scam,loan_hinglish,holdout
+# ---- Digital arrest and fake police ----
+"This is Mumbai Cyber Crime. An FIR is registered against your Aadhaar for money laundering. You are under digital arrest. Do not disconnect. Call 98XXXXXX00",,Scam,digital_arrest,dev
+"CBI officer here. A parcel with drugs was found in your name. Join video call now or an arrest warrant will be issued.",,Scam,digital_arrest,dev
+"Customs department: illegal parcel booked on your Aadhaar. Police will arrest you today. Press 1 to speak to officer.",,Scam,digital_arrest,holdout
+"Your SIM will be blocked by TRAI in 2 hours because of illegal activity on your Aadhaar. Press 9 to talk to the officer.",,Scam,digital_arrest,holdout
+"You are involved in a money laundering case. Transfer your funds to the RBI safe account for verification or face arrest.",,Scam,digital_arrest,holdout,known_gap: one threat signal alone is Suspicious
+"Aapke Aadhaar par FIR darj hai. Digital arrest se bachne ke liye turant video call join karein.",,Scam,digital_arrest_hinglish,dev
+"आपके आधार पर मनी लॉन्ड्रिंग का केस दर्ज है। आपको डिजिटल अरेस्ट किया जा रहा है। वीडियो कॉल पर जुड़ें।",,Scam,digital_arrest_hindi,holdout
+# ---- UPI refund and wrong transfer ----
+"Sir I sent Rs 5000 to your Paytm by mistake. Please return it to 98XXXXXX45@ybl, it is my medical emergency",,Scam,wrong_transfer,dev
+"Rs 2,000 credited wrongly to your UPI. Scan this QR and enter UPI PIN to get your refund.",,Scam,wrong_transfer,dev
+"Galti se aapke account me 3000 aa gaye hain, please wapas bhej do is number par 90XXXXXX66",,Scam,wrong_transfer,holdout,known_gap: a claim plus a number to send to is Suspicious
+"To receive your refund of Rs 1,499 enter your UPI PIN on the next screen. Refund will expire today.",,Scam,wrong_transfer,holdout
+"Your PhonePe cashback of Rs 800 is pending. Approve the collect request to receive it: phonepe-cashback.shop",,Scam,wrong_transfer,holdout
+# ---- Aadhaar and PAN ----
+"Your PAN card will be deactivated today. Link with Aadhaar immediately: incometax-pan-link.top",,Scam,aadhaar_pan,dev
+"Aadhaar update is mandatory. Your Aadhaar will be cancelled. Update here: aadhaar-update.com",,Scam,aadhaar_pan,dev
+"UIDAI: your biometric is locked. Unlock it now or your Aadhaar will be suspended: uidai-verify.top",,Scam,aadhaar_pan,holdout
+"Aapka PAN card band ho jayega, turant update kare: pan-update-now.xyz",,Scam,aadhaar_pan_hinglish,holdout
+# ---- Income tax refund ----
+"Income Tax Dept: you are eligible for a tax refund of Rs 15,490. Claim now: incometax-refund.top",,Scam,tax_refund,dev
+"Your ITR refund of Rs 8,250 is pending. Update your bank details to receive it: bit.ly/itr-refund",,Scam,tax_refund,holdout
+"आयकर विभाग: आपका 12,000 रुपये का रिफंड लंबित है। प्राप्त करने के लिए यहां क्लिक करें incometax-refund-gov.in",,Scam,tax_refund_hindi,holdout
+# ---- APK and wedding invitation ----
+"You are invited! Open our wedding card: wedding-invitation.apk",,Scam,apk,dev
+"Shaadi ka card bheja hai, ye file kholo aur install karo: shaadi-card.apk",,Scam,apk,dev
+"Wedding invitation from our family. Please download and install the attached app.",,Suspicious,apk,holdout
+"PM Kisan installment pending. Install this APK to get Rs 6000: pmkisan-yojana.apk",,Scam,apk,holdout
+"SBI reward points expire today. Install the SBI Rewards APK to redeem: bit.ly/sbi-rewards-apk",,Scam,apk,holdout
+"Your phone needs AnyDesk to complete the KYC. Install AnyDesk and share the code with our executive.",,Scam,remote_access,holdout
+# ---- Shortened links ----
+"Hi check this bit.ly/3xYzAbc",,Suspicious,shortener,dev
+"See photos: tinyurl.com/a1b2c3",,Suspicious,shortener,holdout
+"Your order is delayed. Details at cutt.ly/abc123",,Suspicious,shortener,holdout
+# ---- Investment ----
+"Join our stock tips group and get 300% guaranteed returns in a month. WhatsApp 80XXXXXX90",,Scam,investment,holdout
+"Invest Rs 10,000 today and double your money in 7 days. Limited offer: crypto-double.top",,Scam,investment,holdout
+# ---- Genuine: OTPs ----
+"Your OTP for login is 482913. Do not share it with anyone. -HDFC Bank",AD-HDFCBK,Safe,genuine_otp,dev
+"123456 is your one-time password for SBI netbanking. Valid for 5 mins. Never share it with anyone, including bank staff.",VM-SBIBNK,Safe,genuine_otp,dev
+"Use OTP 771122 to verify your Flipkart login. Do not share it with anyone.",VK-FLPKRT-T,Safe,genuine_otp,dev
+"451290 is the OTP for your transaction of Rs 1,200 at AMAZON. OTP is valid for 10 mins. Do not share it with anyone. -ICICI Bank",JM-ICICIT,Safe,genuine_otp,holdout
+"Your Aadhaar OTP is 339988. Do not share it with anyone. -UIDAI",AD-UIDAIG-G,Safe,genuine_otp,holdout
+"DigiLocker OTP is 901122. It is valid for 10 minutes. Please do not share it.",VM-DGLCKR-G,Safe,genuine_otp,holdout
+"PhonePe OTP: 665544. Never share your OTP or UPI PIN with anyone. PhonePe will never ask for it.",JK-PHONPE-T,Safe,genuine_otp,holdout
+"आपका ओटीपी 482913 है। इसे किसी के साथ साझा न करें। -एसबीआई",AD-SBIBNK-T,Safe,genuine_otp_hindi,dev
+"आपका लॉगिन ओटीपी 774411 है। यह 10 मिनट के लिए मान्य है। किसी को न बताएं।",VM-HDFCBK-T,Safe,genuine_otp_hindi,holdout
+"Aapka OTP 556677 hai. Ise kisi ko na batayein. -Paytm",JD-PAYTMB-T,Safe,genuine_otp_hinglish,holdout
+# ---- Genuine: transaction alerts ----
+"Rs 500 debited from A/c XX1234 on 05-11-26 to AMAZON. Not you? Call 18001234567 -SBI",VM-SBIBNK,Safe,genuine_txn,dev
+"Your SBI A/c XX1234 is credited with Rs 25,000 on 05-11-26. -SBI",AD-SBIBNK-T,Safe,genuine_txn,dev
+"Rs.1,250.00 spent on HDFC Bank Card XX9876 at SWIGGY on 01-11-26. Not you? SMS BLOCK to 7308080808",VM-HDFCBK-T,Safe,genuine_txn,holdout
+"UPI txn of Rs 340 to BIGBASKET successful. Ref 523412341234. If not done by you call 1800-123-1234 -Axis Bank",AX-AXISBK-T,Safe,genuine_txn,holdout
+"You have received Rs 2,000 from RAVI via UPI. Ref 512345678901. -Paytm",JM-PAYTMB-T,Safe,genuine_txn,holdout
+"EMI of Rs 12,450 for loan XX5678 is due on 05-12-26. Please maintain sufficient balance. -Bajaj Finance",VK-BAJAJF-S,Safe,genuine_txn,holdout
+"Your salary of Rs 45,000 has been credited to A/c XX4321. Available balance Rs 61,204. -Canara Bank",AD-CANBNK-T,Safe,genuine_txn,holdout
+"FASTag: Rs 65 deducted at Rajmahal toll plaza for vehicle OD02XX1234. Balance Rs 410. -ICICI FASTag",VM-ICICIF-T,Safe,genuine_fastag,holdout
+"Recharge of Rs 299 on your Jio number is successful. Validity till 05-12-2026.",JD-JIOCAR-T,Safe,genuine_txn,dev
+# ---- Genuine: delivery updates ----
+"Your Amazon order has shipped. Track it at amazon.in/orders",AX-AMAZON-S,Safe,genuine_delivery,dev
+"Your Flipkart order will be delivered today. Track it at flipkart.com/orders",VM-FLPKRT-S,Safe,genuine_delivery,dev
+"Your Myntra order is out for delivery. OTP for delivery is 4412. Do not share it before you get the package.",AD-MYNTRA-S,Safe,genuine_delivery,holdout
+"Delhivery: your parcel AWB 1234567 will be delivered today by Ramesh. Track at delhivery.com",VM-DLVERY-S,Safe,genuine_delivery,holdout
+"Blue Dart: shipment 7654321 delivered on 03-11-26. Thank you for choosing Blue Dart.",VK-BLUDRT-S,Safe,genuine_delivery,holdout
+"India Post: article EL123456789IN delivered at Bhubaneswar on 02-11-26. Track at indiapost.gov.in",VM-INPOST-G,Safe,genuine_delivery,holdout
+"Your Swiggy order is on the way. Delivery partner will reach in 15 mins.",AD-SWIGGY-S,Safe,genuine_delivery,holdout
+# ---- Genuine: bank and government notices ----
+"Dear customer, complete your KYC at your nearest branch before 31-12-26 as per RBI rules. -SBI",AD-SBIBNK-S,Safe,genuine_notice,holdout
+"Your Income Tax return for AY 2026-27 was processed. Details on incometax.gov.in",VM-ITDEFL-G,Safe,genuine_notice,holdout
+"Your e-challan 123456 of Rs 500 is issued for over speeding. View at echallan.parivahan.gov.in",VM-PARIVH-G,Safe,genuine_notice,holdout
+"Your electricity bill of Rs 1,240 is due on 15-11-26. Pay on the TPCODL app or at tpcentralodisha.com",VK-TPCODL-S,Safe,genuine_notice,holdout
+"Your PAN and Aadhaar are linked. No action is needed. -Income Tax Department",VM-ITDEFL-G,Safe,genuine_notice,holdout
+"Beware of fraud: SBI never asks for your OTP, PIN or card number on call. Report fraud at 1930.",AD-SBIBNK-P,Safe,genuine_notice,holdout
+"Your Aadhaar was successfully updated on 01-11-26. Download it from myaadhaar.uidai.gov.in",AD-UIDAIG-G,Safe,genuine_notice,holdout
+"LIC premium of Rs 8,450 for policy XX1234 is due on 20-11-26. Pay at licindia.in",VM-LICIND-S,Safe,genuine_notice,holdout
+"Reminder: your FASTag balance is low. Recharge through your bank app.",VM-HDFCBK-S,Safe,genuine_notice,holdout
+"बिल भुगतान के लिए धन्यवाद। आपका बिजली बिल 840 रुपये जमा हो गया है।",VK-TPCODL-S,Safe,genuine_notice_hindi,holdout
+# ---- Genuine: everyday chat that uses scary words ----
+"Team lunch is at 1pm today. Don't be late!",,Safe,everyday,dev
+"Can you share the wifi password with the guest?",,Safe,everyday,dev
+"Please call me back immediately, the kids are waiting at school.",,Safe,everyday,holdout
+"Bhai kal shaadi hai, card bhej raha hu. Zaroor aana!",,Safe,everyday,holdout
+"My parcel got stuck in customs again, what a week. Coffee tomorrow?",,Safe,everyday,holdout
+"Did you win the match yesterday? Congratulations!",,Safe,everyday,holdout
+"Meeting moved to Zoom, link is on the calendar.",,Safe,everyday,holdout
+"Mummy ne bola hai jaldi ghar aa jao, khana ready hai.",,Safe,everyday,holdout
+"कल सुबह 9 बजे मीटिंग है, कृपया समय पर आएं।",,Safe,everyday_hindi,holdout
+"Police station ke paas wali dukaan se doodh le aana.",,Safe,everyday,holdout
+"I got the loan from the bank last year, EMI is fine now.",,Safe,everyday,holdout
+# ---- holdout2: written after all the rules were final and scored once. Misses are recorded, not tuned away. ----
+ALERT: Dear user your HDFC NetBanking access expires tonight. Reactivate at hdfc-netbanking-secure.top,,Scam,kyc_blocked,holdout2,
+Your Kotak debit card is temporarily locked. Verify card details here: kotak-card-verify.xyz,,Scam,kyc_blocked,holdout2,
+Mahadiscom: Your power supply will stop at 10 pm tonight. Contact electricity officer on 90XXXXXX31,,Scam,electricity,holdout2,"known_gap: scored 20, Safe"
+Blue Dart: delivery attempt failed. Confirm address and pay Rs 30 redelivery charge: bluedart-delivery.xyz,,Scam,parcel,holdout2,
+Traffic police e-challan no 88231 unpaid. Pay fine today or face court case: echallan-pay.top,,Scam,challan,holdout2,
+"Dear winner, your number has been selected in the Flipkart anniversary lucky draw. Claim Rs 10 lakh: bit.ly/fk-lucky",,Scam,lottery,holdout2,
+Earn Rs 800 per hour rating hotels online. Simple tasks from your phone. Contact HR on t.me/hr_anjali,,Scam,job_task,holdout2,
+"Urgent loan without documents, 5 minutes approval. Download the app now: bit.ly/loan5min",,Scam,loan,holdout2,
+Officer from Delhi Police speaking. Your Aadhaar is linked to a money laundering case. Stay on video call or you will be arrested.,,Scam,digital_arrest,holdout2,"known_gap: scored 40, Suspicious"
+"Rs 4,000 sent to your number by mistake, bro please send back on this UPI: 99XXXXXX12@okaxis",,Scam,wrong_transfer,holdout2,
+EPFO: your PF withdrawal is on hold. Update Aadhaar and bank details here: epfo-claim.top,,Scam,aadhaar_pan,holdout2,
+"Income tax refund of Rs 22,300 approved. Submit your card details to receive: itr-refund-gov.in",,Scam,tax_refund,holdout2,
+"Hamari shaadi ka invitation dekhiye, ye app install karein: shaadi-invite.apk",,Scam,apk,holdout2,
+"Aapka SIM 2 ghante me band ho jayega, KYC ke liye turant is number par call karein 80XXXXXX90",,Scam,kyc_hinglish,holdout2,
+आपका बिजली बिल बकाया है। आज रात बिजली काट दी जाएगी। तुरंत कॉल करें 70XXXXXX22,,Scam,electricity_hindi,holdout2,
+आपके नाम से पार्सल में ड्रग्स मिले हैं। पुलिस गिरफ्तार करेगी। तुरंत वीडियो कॉल पर जुड़ें।,,Scam,digital_arrest_hindi,holdout2,
+आपको 50000 रुपये का लोन मंजूर हुआ है। प्रोसेसिंग शुल्क भरें: loan-fast.top,,Scam,loan_hindi,holdout2,"known_gap: scored 54, Suspicious"
+"Hi, share the 6 digit code you got, I sent it by mistake to your number",,Suspicious,otp_trick,holdout2,
+"Your ICICI Bank credit card statement is ready. Total due Rs 5,430 by 18-11-26.",VM-ICICIB,Safe,genuine_notice,holdout2,
+OTP 339120 for your IRCTC booking. Valid 10 min. Do not share.,VM-IRCTCS-T,Safe,genuine_otp,holdout2,
+Hi! Your Zomato order from Dosa Point has been delivered. Rate your meal.,AD-ZOMATO-S,Safe,genuine_delivery,holdout2,
+"Tatkal ticket confirmed. PNR 4521123345, Train 12801, 14-Nov. -IRCTC",VM-IRCTCS-T,Safe,genuine_notice,holdout2,
+Your Airtel bill of Rs 499 is due on 20-11. Pay via Airtel Thanks app.,AD-AIRTEL-S,Safe,genuine_notice,holdout2,
+"Dear customer, Rs 10,000 withdrawn at ATM from A/c XX5512. If not you, call 1800-425-3800. -SBI",VM-SBIBNK-T,Safe,genuine_txn,holdout2,
+Your Aadhaar update request URN 1234/5678 has been received. Track on myaadhaar.uidai.gov.in,AD-UIDAIG-G,Safe,genuine_notice,holdout2,
+Reminder: passport appointment at PSK Bhubaneswar on 12-11-26 at 10:30 am. Carry original documents.,VM-PSPKDL-G,Safe,genuine_notice,holdout2,
+"Papa, main station pahunch gaya, gaadi bhej do.",,Safe,everyday,holdout2,
+"आज शाम 5 बजे क्लास है, नोट्स लेकर आना।",,Safe,everyday_hindi,holdout2,
+Your OTP to reset your password is 776655. Please don't share this with anyone.,VM-HDFCBK-T,Safe,genuine_otp,holdout2,
+"The electricity went out again in our area, can you check if yours is working?",,Safe,everyday,holdout2,

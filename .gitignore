@@ -2,3 +2,5 @@ venv/
 data/
 __pycache__/
 .streamlit/secrets.toml
+brands_custom.json
+brands_custom.tmp
