@@ -1,15 +1,18 @@
 """
 Kavach - train the machine-learning model.
 
-Run with:  python train.py                  (PhiUSIIL data, the default)
-           python train.py --source tranco  (fallback: Tranco + Phishing.Database)
- - The first run downloads the data into data/ (needs internet once).
- - After that it works fully offline.
+Run with:  python datasets.py                (once: downloads the data and makes the held-out test set)
+           python train.py                   (the default: PhiUSIIL + Tranco + Phishing.Database)
+           python train.py --source phiusiil (PhiUSIIL alone, the previous model)
+           python train.py --source tranco   (fallback: Tranco + Phishing.Database)
+ - After the first download it works fully offline.
 Outputs: model.joblib, feature_importance.csv, metrics.json
+         (add --out somefolder to try something without touching the real files)
 
 The model only ever sees our own 12 features of the host name (features.py), so the app and the
 training use exactly the same logic. We never use PhiUSIIL's ready-made columns, because they
 leak the answer (URLSimilarityIndex alone gets 99.7%) or need the live page.
+Everything in the held-out test set (data/realworld_test.csv) is kept out of training, by registered domain.
 """
 import io
 import json
@@ -41,6 +44,7 @@ PHIUSIIL_ZIP = "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+
 TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
 PHISH_URL = ("https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/"
              "master/phishing-domains-ACTIVE.txt")
+REALWORLD_CSV = DATA / "realworld_test.csv"       # made by datasets.py, never trained on
 N_PER_CLASS = 20_000
 SEED = 42
 ML_TRUST = 0.70     # the same threshold app.py uses before ML can raise a score
@@ -210,14 +214,58 @@ def cross_check(model) -> dict:
             "n_tranco": len(real), "n_feed": len(feed)}
 
 
+def held_out_sites() -> set:
+    """Registered domains in the real-world test set (datasets.py). Training must never see these."""
+    if not REALWORLD_CSV.exists():
+        return set()
+    return set(pd.read_csv(REALWORLD_CSV, usecols=["reg"])["reg"].dropna())
+
+
+def load_mixed(extra_legit: int = 60_000, extra_phish: int = 120_000):
+    """PhiUSIIL plus newer data. Returns (hosts, labels, registered domains), one row per host.
+
+    Adds real sites from the Tranco top 1M, which teaches the model that small real sites can have
+    digits or a cheap ending, and Phishing.Database hosts, which are newer than PhiUSIIL. OpenPhish and
+    PhishTank are never used here: see the licence notes in datasets.py.
+    Anything in the held-out test set is dropped, and a host with both labels is dropped too.
+    """
+    from datasets import read_phishing_database, read_tranco_1m
+    rng = random.Random(SEED)
+    hosts, labels, regs = load_phiusiil()
+    table = {host: label for host, label in zip(hosts, labels)}
+    held_out = held_out_sites()
+    real = [d for d in read_tranco_1m() if d not in LEGIT_DOMAINS and registered(d) not in held_out]
+    feed = [h for h in read_phishing_database() if registered(h) not in held_out and registered(h) not in LEGIT_DOMAINS]
+    feed_sites = {registered(h) for h in feed}
+    real = [d for d in real if d not in feed_sites]
+    phish_set = set(feed)
+    for host in rng.sample(real, min(extra_legit, len(real))):
+        table.setdefault(host, 0)
+    for host in rng.sample(feed, min(extra_phish, len(feed))):
+        if table.get(host, 1) == 0:   # labelled real elsewhere: unclear, so leave it out
+            del table[host]
+        else:
+            table[host] = 1
+    # Sites PhiUSIIL calls real but a feed calls phishing are unclear too
+    for host in [h for h, label in table.items() if label == 0 and h in phish_set]:
+        del table[host]
+    table = {h: label for h, label in table.items() if registered(h) not in held_out}
+    print(f"Mixed data: {len(table)} hosts ({sum(table.values())} phishing), {len(held_out)} held-out sites kept apart")
+    hosts = list(table)
+    return hosts, [table[h] for h in hosts], [registered(h) for h in hosts]
+
+
 def main():
-    source = "tranco" if "--source" in sys.argv and "tranco" in sys.argv else "phiusiil"
-    if source == "phiusiil" and not get_phiusiil():
+    wanted = sys.argv[sys.argv.index("--source") + 1] if "--source" in sys.argv else "mixed"
+    source = wanted
+    if source in ("phiusiil", "mixed") and not get_phiusiil():
         print("Falling back to Tranco + Phishing.Database.")
         source = "tranco"
     if source == "tranco":
         get_tranco_data()
         hosts, y, groups = load_tranco()
+    elif source == "mixed":
+        hosts, y, groups = load_mixed()
     else:
         hosts, y, groups = load_phiusiil()
     y = np.array(y)
@@ -254,6 +302,9 @@ def main():
         "calibration": calibration_table(y_test, proba),
         "cross_check": cross_check(model) if source == "phiusiil" else {},
     }
+    # Experiments can save elsewhere: python train.py --source phiusiil --out somewhere
+    out = Path(sys.argv[sys.argv.index("--out") + 1]) if "--out" in sys.argv else HERE
+    out.mkdir(parents=True, exist_ok=True)
     print("\n=== Test-set results ===")
     for k in ("accuracy", "precision", "recall", "f1"):
         print(f"{k:<10} {metrics[k]:.4f}")
@@ -279,10 +330,10 @@ def main():
     print(imp.to_string(index=False))
 
     # compress=3 keeps the file small enough to commit to git
-    joblib.dump({"model": model, "features": FEATURE_NAMES}, HERE / "model.joblib", compress=3)
-    imp.to_csv(HERE / "feature_importance.csv", index=False)
-    (HERE / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    size_mb = (HERE / "model.joblib").stat().st_size / 1024 / 1024
+    joblib.dump({"model": model, "features": FEATURE_NAMES}, out / "model.joblib", compress=3)
+    imp.to_csv(out / "feature_importance.csv", index=False)
+    (out / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    size_mb = (out / "model.joblib").stat().st_size / 1024 / 1024
     print(f"\nSaved model.joblib ({size_mb:.1f} MB), feature_importance.csv, metrics.json")
 
 

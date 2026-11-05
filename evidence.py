@@ -9,9 +9,9 @@ import re
 from rapidfuzz import process
 from rapidfuzz.distance import DamerauLevenshtein
 
-from features import (BRANDS, CYRILLIC_LETTERS, LEGIT_DOMAINS, POPULAR_NAMES, POPULAR_SET, before_at,
-                      brand_hidden_in, decode_idn, extract, is_free_hosted, is_trusted_bank, normalize,
-                      parse)
+from features import (BRAND_ALIASES, BRANDS, CYRILLIC_LETTERS, LEGIT_DOMAINS, POPULAR_NAMES, POPULAR_SET, WEAK_BRANDS,
+                      before_at, brand_hidden_in, decode_idn, extract, is_free_hosted, is_trusted_bank, normalize,
+                      on_brands_changed, parse)
 from lookalikes import KEYBOARD
 
 ATTACK_LABELS = {
@@ -27,11 +27,30 @@ LOOKS_LIKE = {"0": "o", "1": "li", "3": "e", "5": "s", "@": "a", "l": "i", "i": 
               **{cyr: latin for cyr, latin in CYRILLIC_LETTERS.items()}}
 LOOKS_LIKE_TWO = {"rn": "m", "vv": "w"}  # two characters that together imitate one letter
 
-# Every name we can compare against: brands first, so a brand wins a tie
-_KNOWN = {**{brand: domains[0] for brand, domains in BRANDS.items()},
-          **{name: domain for name, domain in POPULAR_NAMES.items() if name not in BRANDS}}
-_KNOWN_NAMES = list(_KNOWN)
-_BRAND_OF_DOMAIN = {domains[0]: brand for brand, domains in BRANDS.items()}
+# Every name we can compare against: brands first, so a brand wins a tie. Rebuilt when a brand is added.
+_KNOWN, _KNOWN_NAMES, _NAMES_OF_DOMAIN = {}, [], {}
+
+
+def _refresh_known() -> None:
+    _KNOWN.clear()
+    _KNOWN.update({brand: domains[0] for brand, domains in BRANDS.items() if brand not in WEAK_BRANDS})
+    _KNOWN.update({name: domain for name, domain in POPULAR_NAMES.items() if name not in BRANDS})
+    _KNOWN_NAMES[:] = list(_KNOWN)
+    _NAMES_OF_DOMAIN.clear()
+    for brand, domains in BRANDS.items():  # the main name first, then its aliases
+        _NAMES_OF_DOMAIN.setdefault(domains[0], []).append(brand)
+
+
+on_brands_changed(_refresh_known)
+
+
+def _real_name(target: str, text: str) -> str:
+    """Which name of this brand does the text use? hdfc-login is compared with hdfc, not hdfcbank."""
+    names = _NAMES_OF_DOMAIN.get(target)
+    if not names:
+        return extract(target).domain
+    clean = normalize(text).replace("-", "").replace(".", "")
+    return next((name for name in sorted(names, key=len, reverse=True) if normalize(name) in clean), names[0])
 
 
 def align(shown: str, real: str) -> list:
@@ -81,10 +100,11 @@ def align(shown: str, real: str) -> list:
 def _steps_with_extras(text: str, real: str) -> list:
     """Like align(), but if the real name sits whole inside the text (startamazonstore), keep it
     in one piece and treat everything around it as one block of extra text."""
-    if real in normalize(text).replace("-", "") and text != real:
+    form = normalize(real)
+    if form in normalize(text).replace("-", "") and text != real:
         for start in range(len(text)):
             for end in range(start + 1, len(text) + 1):
-                if normalize(text[start:end]).replace("-", "") == real:
+                if normalize(text[start:end]).replace("-", "") == form:
                     before = [("extra", text[:start], "", 1)] if text[:start] else []
                     after = [("extra", text[end:], "", len(real) + 1)] if text[end:] else []
                     return before + align(text[start:end], real) + after
@@ -115,7 +135,7 @@ def describe(step: tuple) -> str:
 def _edit_lines(text: str, real: str, steps: list) -> list:
     """The edits in plain English. If the real name is whole inside a longer one (startamazonstore),
     the extra text becomes one line naming the extra words."""
-    is_whole = real in normalize(text).replace("-", "")
+    is_whole = normalize(real) in normalize(text).replace("-", "")
     lines, extra_words = [], []
     for step in steps:
         if is_whole and step[0] == "extra" and len(step[1]) > 1:
@@ -157,7 +177,8 @@ def _distance(text: str, real: str) -> int:
     """Edit distance after fixing fake letters and removing hyphens."""
     clean = normalize(text).replace("-", "")
     one_as_i = normalize(text.replace("1", "i")).replace("-", "")
-    return min(DamerauLevenshtein.distance(clean, real), DamerauLevenshtein.distance(one_as_i, real))
+    form = normalize(real)
+    return min(DamerauLevenshtein.distance(clean, form), DamerauLevenshtein.distance(one_as_i, form))
 
 
 def _closeness(text: str, real: str) -> int:
@@ -185,7 +206,7 @@ def _attack_type(text: str, real: str, steps: list) -> str:
         if kind == "replace":
             return "keyboard_neighbour" if shown in KEYBOARD.get(wanted, "") else "changed_letter"
         return {"missing": "missing_letter", "extra": "extra_letter", "swap": "swapped_letters"}[kind]
-    if real in normalize(text).replace("-", ""):
+    if normalize(real) in normalize(text).replace("-", ""):
         return "combosquat"
     return "similar_name"
 
@@ -208,7 +229,7 @@ def similarity_evidence(url: str, target) -> dict:
     hidden = before_at(url)
     subdomain = "" if parts.subdomain == "www" else parts.subdomain.removeprefix("www.")
     bare_host = decode_idn(host.removeprefix("www."))
-    real_name = _BRAND_OF_DOMAIN.get(target, extract(target).domain) if target else None
+    real_name = _real_name(target, f"{parts.subdomain}.{parts.domain}") if target else None
 
     # 1. @ trick pretending to be a real site
     if hidden is not None and target:
@@ -228,7 +249,7 @@ def similarity_evidence(url: str, target) -> dict:
     name = decode_idn(parts.domain)
     if target:
         # Brand (or top site) name in the subdomain, while the domain's own name is unrelated
-        in_subdomain = (real_name in normalize(subdomain).replace("-", "")
+        in_subdomain = (normalize(real_name) in normalize(subdomain).replace("-", "")
                         and not brand_hidden_in(parts.domain, real_name) and _closeness(name, real_name) < 80)
         if in_subdomain:
             steps = _steps_with_extras(bare_host, real_name)

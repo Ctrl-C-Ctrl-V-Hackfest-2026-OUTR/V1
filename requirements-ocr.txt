@@ -1,0 +1,5 @@
+﻿# Optional: reading text from screenshots. The rest of Kavach works without these.
+#   pip install -r requirements-ocr.txt
+#   python ocr.py --setup      (downloads the Hindi model once; checks then run fully offline)
+rapidocr==3.10.0
+onnxruntime==1.31.1

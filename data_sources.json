@@ -1,0 +1,71 @@
+{
+  "sources": [
+    {
+      "name": "phiusiil",
+      "title": "PhiUSIIL Phishing URL dataset",
+      "url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+      "licence": "CC BY 4.0",
+      "use": "training",
+      "rows": 235795,
+      "date": "2024-03-04"
+    },
+    {
+      "name": "phishing_database",
+      "title": "Phishing.Database (active domains)",
+      "url": "https://github.com/Phishing-Database/Phishing.Database",
+      "licence": "MIT",
+      "use": "training candidate",
+      "rows": 392163,
+      "date": "2026-11-04"
+    },
+    {
+      "name": "tranco_1m",
+      "title": "Tranco top 1 million",
+      "url": "https://tranco-list.eu/",
+      "licence": "No licence of its own. Built from Cisco Umbrella, Majestic (CC BY 3.0), Farsight, CrUX (CC BY-SA 4.0) and Cloudflare Radar (CC BY-NC 4.0); cite Le Pochat et al., NDSS 2019",
+      "use": "real-site lists: popular sites, training negatives and the held-out legit test",
+      "rows": 1000000,
+      "date": "2026-11-06"
+    },
+    {
+      "name": "phishtank",
+      "title": "PhishTank online-valid (verified phishing, with dates)",
+      "url": "https://www.phishtank.com/developer_info.php",
+      "licence": "Cisco Talos terms; free download, a few per day without a key. Terms not clear for training or redistribution",
+      "use": "evaluation only, never committed",
+      "rows": 21703,
+      "date": "2026-11-06"
+    },
+    {
+      "name": "openphish",
+      "title": "OpenPhish community feed",
+      "url": "https://openphish.com/",
+      "licence": "OpenPhish terms: personal and academic research, no redistribution or derivative works",
+      "use": "evaluation only, never committed",
+      "rows": 265,
+      "date": "2026-11-06"
+    },
+    {
+      "name": "uci_sms",
+      "title": "UCI SMS Spam Collection",
+      "url": "https://archive.ics.uci.edu/dataset/228/sms+spam+collection",
+      "licence": "CC BY 4.0",
+      "use": "false-alarm check on real everyday messages (English and Singapore English, not Indian scams)",
+      "rows": 5574,
+      "date": "2026-11-06"
+    }
+  ],
+  "rejected": {
+    "URLhaus": "Its text feed now answers 410 Gone, and it lists malware, not phishing.",
+    "Kaggle phishing URL sets": "Mostly older copies of the same feeds, with unclear licences."
+  },
+  "time_cut": "2026-07-01",
+  "tranco_list_id": "JZPGY",
+  "realworld_test": {
+    "phishtank_recent": 6098,
+    "tranco_tail": 5000,
+    "india_small": 3000,
+    "gov_nic_in": 1192,
+    "openphish_now": 259
+  }
+}

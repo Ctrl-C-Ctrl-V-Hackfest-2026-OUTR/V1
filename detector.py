@@ -11,8 +11,9 @@ import joblib
 import pandas as pd
 
 # Brand list, scam words, look-alike logic and ML features are shared with train.py
-from features import (BRANDS, FEATURE_NAMES, LEGIT_DOMAINS, POPULAR_SET, SUSPICIOUS_TLDS, SUSPICIOUS_WORDS,
-                      at_imitates, before_at, brand_match, decode_idn, extract, extract_features,
+from features import (BRANDS, FEATURE_NAMES, GOVERNMENT_ENDINGS, LEGIT_DOMAINS, POPULAR_SET, SUSPICIOUS_TLDS,
+                      SUSPICIOUS_WORDS,
+                      at_imitates, before_at, brand_match, brand_name_of, decode_idn, extract, extract_features,
                       is_free_hosted, is_trusted_bank, normalize, one_typo_brand, parse, popular_lookalike,
                       scam_words_brand, subdomain_brand, top_site_abuse, top_site_in_subdomain)
 from evidence import edits_between, similarity_evidence
@@ -21,8 +22,51 @@ HERE = Path(__file__).parent
 OFFICIAL_REASON = "Known official domain"
 BANK_REASON = "Verified Indian bank domain (.bank.in)"
 POPULAR_REASON = "Popular real website (top 20,000 sites)"
+GOVERNMENT_REASON = "Indian government domain (.gov.in or .nic.in)"
 POPULAR_SUB_REASON = "Subdomain of popular real website {}"
+FREE_HOST_REASON = "Hosted on {}, where anyone can publish a page"
+FREE_HOST_FLOOR = 30  # at least Suspicious: the address says nothing about who runs the page
 ML_TRUST = 0.70  # the ML model only gets a say when it is at least this sure
+
+# Every rule's points, in one place. analyze() uses these and the website's signals grid shows them,
+# so the page can't drift from the code.
+POINTS = {"at_trick": 40, "at_trick_brand": 60, "homoglyph": 70, "one_typo": 60, "scam_words_brand": 60, "looks_like": 45,
+          "popular": 45, "subdomain": 45, "fake_ending": 60, "suspicious_tld": 15, "scam_word": 10, "scam_words_max": 20,
+          "hyphens": 10, "digits": 5, "long": 5, "ip": 30}
+
+
+def signal_catalog() -> list:
+    """What the rules look for and what each is worth, for the signals grid on the website."""
+    p = POINTS
+    return [
+        {"name": "Look-alike characters", "points": f"+{p['homoglyph']}",
+         "detail": "Fake letters (0 for o, rn for m, Cyrillic) spell a brand: paytrn, \u0430pple."},
+        {"name": "One typo from a brand", "points": f"+{p['one_typo']}",
+         "detail": "Exactly one edit from a brand with a long enough name to be safe: icicibankk."},
+        {"name": "Brand plus scam words", "points": f"+{p['scam_words_brand']}",
+         "detail": "A short brand with only scam words around it: sbi-kyc, sbikyc."},
+        {"name": "Protected ending as a disguise", "points": f"+{p['fake_ending']}",
+         "detail": ".gov.in or .bank.in used inside a longer address: sbi.gov.in.evil.com."},
+        {"name": "Looks like a brand", "points": f"+{p['looks_like']}",
+         "detail": "80%+ similar to a brand, or a brand hidden in a longer name: sbi-kyc-update-now."},
+        {"name": "Popular-site look-alike", "points": f"+{p['popular']}",
+         "detail": "One typo from a top site, or a top-200 name on another ending: rediit.com, reddit.xyz."},
+        {"name": "Brand in a subdomain", "points": f"+{p['subdomain']}",
+         "detail": "A brand placed before an unrelated domain: paytm.verify-account.click."},
+        {"name": "Hidden address (@ trick)", "points": f"+{p['at_trick']} or +{p['at_trick_brand']}",
+         "detail": "Text before an @ hides where the browser really goes."},
+        {"name": "Bare IP address", "points": f"+{p['ip']}", "detail": "A raw IP used where a domain should be."},
+        {"name": "Free hosting", "points": f"at least {FREE_HOST_FLOOR}",
+         "detail": "Anyone can publish on these, so the address says nothing about who runs the page: x.weebly.com."},
+        {"name": "High-abuse ending", "points": f"+{p['suspicious_tld']}",
+         "detail": f"{len(SUSPICIOUS_TLDS)} endings where phishing is far more common than real sites: .xyz, .top, .cfd."},
+        {"name": "Scam words", "points": f"+{p['scam_word']} each, max {p['scam_words_max']}",
+         "detail": "login, verify, kyc, update, reward."},
+        {"name": "Name structure", "points": f"+{p['hyphens']} / +{p['digits']} / +{p['long']}",
+         "detail": "Two or more hyphens, digits in the name, or more than 30 characters."},
+        {"name": "ML second opinion", "points": "can only raise",
+         "detail": f"At {ML_TRUST:.0%} or more, the score becomes the average of rules and ML if that is higher."},
+    ]
 
 
 def verdict_for(score: float) -> str:
@@ -64,7 +108,7 @@ def analyze(url: str) -> dict:
     # +60 = Phishing on its own, when the hidden part pretends to be a brand.
     hidden = before_at(url)
     if hidden is not None:
-        at_score = 60 if at_imitates(hidden) else 40
+        at_score = POINTS["at_trick_brand"] if at_imitates(hidden) else POINTS["at_trick"]
         at_reason = f"Uses @ to hide the real address — the browser goes to {full_host}"
         # The host itself is one we trust, so the @ is the only thing wrong with this address
         if is_official or is_bank or is_popular_site or is_same_owner:
@@ -76,6 +120,10 @@ def analyze(url: str) -> dict:
         return settled(url, domain, 0, OFFICIAL_REASON,
                        "This is a known official domain, so it is Safe and no further checks were needed.")
     elif is_bank:
+        if full_host.endswith(GOVERNMENT_ENDINGS):
+            return settled(url, full_host, 0, GOVERNMENT_REASON,
+                           "Only Indian government bodies can register under .gov.in and .nic.in, so a scammer "
+                           "can't buy a look-alike here. It is Safe and no further checks were needed.")
         return settled(url, full_host, 0, BANK_REASON,
                        "Only RBI-verified banks can register under .bank.in, so it is Safe "
                        "and no further checks were needed.")
@@ -95,16 +143,17 @@ def analyze(url: str) -> dict:
         scam_brand = scam_words_brand(name)
         if is_homoglyph:
             trick = "Hyphen added to copy" if decode_idn(name).replace("-", "") == clean else "Fake letters copy"
-            score += flag(70, f"{trick} '{clean}': " + ", ".join(edits_between(name, clean)))
+            real = brand_name_of(clean)
+            score += flag(POINTS["homoglyph"], f"{trick} '{real}': " + ", ".join(edits_between(name, real)))
         elif typo_brand:
             # +60 = Phishing on its own
-            score += flag(60, f"One typo away from '{typo_brand}': "
+            score += flag(POINTS["one_typo"], f"One typo away from '{typo_brand}': "
                           + ", ".join(edits_between(clean, typo_brand)))
         elif scam_brand:
             # +60 = Phishing on its own: sbikyc is a classic look-alike
-            score += flag(60, f"Brand '{scam_brand}' with only scam words added: '{decode_idn(name)}'")
+            score += flag(POINTS["scam_words_brand"], f"Brand '{scam_brand}' with only scam words added: '{decode_idn(name)}'")
         elif best_sim >= 80:
-            score += flag(45, f"Looks like '{best_brand}' but is not the real site")
+            score += flag(POINTS["looks_like"], f"Looks like '{best_brand}' but is not the real site")
         else:
             # Only +45 (Suspicious): popular-site names cause more false alarms than our brands
             popular_target = popular_lookalike(name)
@@ -112,41 +161,51 @@ def analyze(url: str) -> dict:
             if popular_target:
                 popular_name = extract(popular_target).domain
                 trick = "Fake letters copy" if normalize(name) == popular_name else "One typo away from"
-                score += flag(45, f"{trick} popular site '{popular_target}': "
+                score += flag(POINTS["popular"], f"{trick} popular site '{popular_target}': "
                               + ", ".join(edits_between(name, popular_name)))
             elif abused_site:
-                score += flag(45, f"Uses the name of popular site '{abused_site}' but is not that site")
+                score += flag(POINTS["popular"], f"Uses the name of popular site '{abused_site}' but is not that site")
 
     # 2. Brand name sitting in the subdomain, e.g. paytm.secure-login.xyz
     #    +45 so that "brand in subdomain" + a suspicious TLD (+15) always reaches 60 = Phishing
     if sub_brand:
-        score += flag(45, f"Brand '{sub_brand}' used in subdomain")
+        score += flag(POINTS["subdomain"], f"Brand '{sub_brand}' used in subdomain")
+    # A protected ending used as a disguise, e.g. sbi.gov.in.evil.com. Real .gov.in and .bank.in
+    # addresses end there, so this is never an accident: +60 = Phishing on its own.
+    if re.search(r"(^|\.)(gov|nic|bank)\.in$", parts.subdomain):
+        score += flag(POINTS["fake_ending"], f"Pretends to be a government or bank address, but the real domain is {domain}")
 
     # 3. Cheap / abused TLD
     if parts.suffix in SUSPICIOUS_TLDS:
-        score += flag(15, f"Suspicious ending '.{parts.suffix}'")
+        score += flag(POINTS["suspicious_tld"], f"Suspicious ending '.{parts.suffix}'")
 
     # 4. Scammy words
     hits = [w for w in SUSPICIOUS_WORDS if w in full_host]
     if hits:
-        score += flag(min(10 * len(hits), 20), "Contains words: " + ", ".join(hits))
+        score += flag(min(POINTS["scam_word"] * len(hits), POINTS["scam_words_max"]), "Contains words: " + ", ".join(hits))
 
     # 5. Structure tricks
     shown_name = decode_idn(name)  # what a person sees: the xn-- code itself has hyphens and digits
     if shown_name.count("-") >= 2:
-        score += flag(10, f"Many hyphens: {shown_name.count('-')} in '{shown_name}'")
+        score += flag(POINTS["hyphens"], f"Many hyphens: {shown_name.count('-')} in '{shown_name}'")
     digits = re.findall(r"\d", shown_name)
     if digits:
-        score += flag(5, "Digits in name: " + "".join(digits))
+        score += flag(POINTS["digits"], "Digits in name: " + "".join(digits))
     if len(full_host) > 30:
-        score += flag(5, f"Very long domain: {len(full_host)} characters")
+        score += flag(POINTS["long"], f"Very long domain: {len(full_host)} characters")
     if re.fullmatch(r"[\d.]+", full_host):
-        score += flag(30, f"Raw IP address instead of a name: {full_host}")
+        score += flag(POINTS["ip"], f"Raw IP address instead of a name: {full_host}")
 
+    # 6. Anyone can publish here. A floor, not extra points, so the model's average below stays as it was:
+    #    on its own this means Suspicious, never Phishing (many real projects use github.io).
     score = min(score, 100)
+    floor_added = 0
+    if is_free_hosted(full_host) and score < FREE_HOST_FLOOR:
+        floor_added = flag(FREE_HOST_FLOOR - score, FREE_HOST_REASON.format(domain))
+        score = FREE_HOST_FLOOR
     return {"url": url, "domain": domain, "score": score, "verdict": verdict_for(score),
             "reasons": "; ".join(reasons) or "No red flags found", "note": None,
-            "reason_points": weights}
+            "reason_points": weights, "floor_added": floor_added}
 
 
 def load_model():
@@ -203,7 +262,8 @@ def score_link(url: str, bundle, proba=None) -> dict:
     p = float(proba)
     r["ml_probability"] = round(p * 100, 1)
     if p >= ML_TRUST:
-        blended = round((r["rule_score"] + r["ml_probability"]) / 2)
+        # The free-hosting floor is left out of the average: it says "unknown owner", not "more risk"
+        blended = round((r["rule_score"] - r.get("floor_added", 0) + r["ml_probability"]) / 2)
         if blended > r["rule_score"]:
             r["score"] = blended
             r["decided_by"] = "Rules + ML"
@@ -233,7 +293,7 @@ def lookalike_target(url: str):
     if not is_popular:  # same as analyze(): the name of a popular site is not a look-alike
         clean, best_brand, best_sim, is_homoglyph = brand_match(parts.domain)
         if is_homoglyph:
-            brand = clean
+            brand = brand_name_of(clean)
         else:
             brand = one_typo_brand(clean) or (best_brand if best_sim >= 80 else None)
     if not brand:

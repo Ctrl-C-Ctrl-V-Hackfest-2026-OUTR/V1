@@ -5,7 +5,9 @@ Both app.py (the Streamlit app) and train.py (model training) import from here,
 so the brand list, scam words and look-alike logic live in exactly one place.
 This file must NOT import app.py (app.py starts the Streamlit UI when imported).
 """
+import json
 import math
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -17,35 +19,30 @@ from rapidfuzz.distance import DamerauLevenshtein
 # Use tldextract's built-in suffix list, so it works offline
 extract = tldextract.TLDExtract(suffix_list_urls=())
 
-# Real brands that phishers like to copy -> list of their real domains
-# (a brand can own several real domains, e.g. amazon.in AND amazon.com)
-BRANDS = {
-    "sbi": ["sbi.co.in"], "onlinesbi": ["onlinesbi.sbi"], "hdfcbank": ["hdfcbank.com"],
-    "icicibank": ["icicibank.com"], "axisbank": ["axisbank.com"], "paytm": ["paytm.com"],
-    "phonepe": ["phonepe.com"], "google": ["google.com"],
-    "amazon": ["amazon.in", "amazon.com"],
-    "flipkart": ["flipkart.com"], "irctc": ["irctc.co.in"], "microsoft": ["microsoft.com"],
-    "apple": ["apple.com"], "facebook": ["facebook.com"], "instagram": ["instagram.com"],
-    "whatsapp": ["whatsapp.com"], "netflix": ["netflix.com"], "paypal": ["paypal.com"],
-    "incometax": ["incometax.gov.in"], "uidai": ["uidai.gov.in"],
-    "youtube": ["youtube.com"], "gmail": ["gmail.com"], "linkedin": ["linkedin.com"],
-    "twitter": ["twitter.com", "x.com"], "telegram": ["telegram.org"],
-    # Indian banks
-    "kotak": ["kotak.com"], "pnbindia": ["pnbindia.in"], "bankofbaroda": ["bankofbaroda.in"],
-    "canarabank": ["canarabank.com"], "yesbank": ["yesbank.in"], "indusind": ["indusind.com"],
-    # UPI and payments
-    "googlepay": ["pay.google.com"], "bhimupi": ["bhimupi.org.in"], "npci": ["npci.org.in"],
-    # Shopping, food delivery, telecom
-    "myntra": ["myntra.com"], "meesho": ["meesho.com"], "swiggy": ["swiggy.com"],
-    "zomato": ["zomato.com"], "airtel": ["airtel.in"], "jio": ["jio.com"],
-    # Government
-    "epfindia": ["epfindia.gov.in"], "indiapost": ["indiapost.gov.in"],
-}
-# Flat set of every official domain -> instant "Safe"
-LEGIT_DOMAINS = {d for domains in BRANDS.values() for d in domains}
+# The watchlist lives in a data file, so adding a brand needs no code change. See "_how_to_add" there.
+BRANDS_FILE = Path(__file__).parent / "brands.json"
+# Brands added on the website, on this computer only (gitignored, made when the first one is added).
+CUSTOM_BRANDS_FILE = Path(os.environ.get("KAVACH_CUSTOM_BRANDS", Path(__file__).parent / "brands_custom.json"))  # the tests use a temporary one
+MAX_CUSTOM_BRANDS = 200
 
-# Only RBI-verified Indian banks can register under .bank.in, so anything under it is trusted.
-TRUSTED_ENDINGS = (".bank.in",)  # the leading dot stops fakebank.in from matching
+BRAND_RECORDS = []    # one full record per brand, as in brands.json, plus the custom ones
+# Everything below is filled by _load_brands(). They are changed in place, never replaced, because
+# other files hold a reference to them through "from features import BRANDS".
+BRANDS = {}           # name to look for -> the brand's real domains (aliases included)
+LEGIT_DOMAINS = set() # flat set of every official domain -> instant "Safe"
+BRAND_ALIASES = set() # other spellings: match when exact or hidden, but never as "one typo away"
+WEAK_BRANDS = set()   # names that are also ordinary words: only match with scam words around them
+_BRAND_FORMS = {}     # name -> the name after normalize() (karnatakabank -> kamatakabank, see below)
+_FORM_TO_KEY = {}     # the reverse
+_LEGIT_LONGEST_FIRST = []
+_brand_listeners = [] # functions to call when the watchlist changes (evidence.py, sms.py)
+
+# Only RBI-verified Indian banks can register under .bank.in, and only Indian government bodies under
+# .gov.in and .nic.in, so a scammer can't buy a look-alike there. The data agrees: none of the 413,000
+# hosts in our phishing feeds is on .gov.in or .nic.in, while 33 of 1,192 real ones were being flagged.
+# These sites can still be hacked, which no check of the name can see.
+TRUSTED_ENDINGS = (".bank.in", ".gov.in", ".nic.in")  # the leading dot stops fakebank.in from matching
+GOVERNMENT_ENDINGS = (".gov.in", ".nic.in")
 
 # Sites where anyone can publish a page, so a subdomain says nothing about who runs it.
 # Subdomains of these always go to the ML model, even when the rules find nothing.
@@ -87,8 +84,32 @@ FREE_HOSTING = {
     "app.link", "page.link",
     # Free subdomains and dynamic DNS
     "work.gd", "wikaba.com", "otzo.com", "dynv6.net", "ydns.eu",
+    # Added November 2026 by the same method, on a newer count: hosts with 14+ entries in the older feeds
+    # (Phishing.Database plus PhishTank before the test cut-off, never the held-out test rows) that offer
+    # public hosting. Blogger's country addresses (blogspot.fr...) are handled in is_free_hosted().
+    # Popular sites, which would otherwise pass as Safe with the model skipped
+    "hsforms.com", "typeform.com", "sibforms.com", "wpengine.com", "googleusercontent.com", "translate.goog",
+    "onrender.com", "studio.site", "lovable.app", "ghost.io", "cloudfront.net", "azurefd.net", "azureedge.net",
+    "fastly.net", "pythonanywhere.com", "myftpupload.com", "systeme.io", "squarespace.com", "kinsta.cloud",
+    "myshopify.com", "tumblr.com", "netlify.com", "regruhosting.ru", "linodeusercontent.com", "neocities.org",
+    "hostingersite.com", "firebaseio.com", "ovh.net", "cloudwaysapps.com", "mybigcommerce.com", "scw.cloud",
+    "webnode.page", "webnode.com", "webhostbox.net", "hs-sites.com", "editmysite.com", "nxcli.io", "railway.app",
+    "cpanel.site", "meusitehostgator.com.br", "sslip.io",
+    # Free subdomains and dynamic DNS
+    "dynamic-dns.net", "gb.net", "co.com", "org.ru", "net.ru", "pp.ru", "pp.ua", "us.com", "eu.com", "eu.cc",
+    "serveuser.com", "giize.com", "dedyn.io", "kozow.com", "gleeze.com", "mooo.com", "ath.cx", "dpdns.org",
+    "ocry.com", "25u.com", "x24hr.com", "jetos.com", "itemdb.com", "ourhobby.com", "dvrlists.com", "mrbasic.com",
+    "onedumb.com", "dumb1.com",
+    # Less popular hosting, IPFS gateways and throwaway addresses
+    "dweb.link", "repl.co", "replit.dev", "xsph.ru", "swtest.ru", "co.vu", "webcindario.com", "cf-ipfs.com",
+    "usrfiles.com", "ewp.live", "wixstudio.com", "nftstorage.link", "w3s.link", "surge.sh", "infura-ipfs.io",
+    "typedream.app", "atwebpages.com", "fleek.co", "crabdance.com", "webwave.dev", "runcloud.link", "ic0.app",
+    "wcomhost.com", "serveirc.com", "brizy.site", "temp-site.link", "codeanyapp.com", "umbler.net", "start.page",
+    "easywp.com", "ubpages.com", "justns.ru", "webspace.re", "csb.app", "preview-domain.com", "zya.me",
+    "w3spaces.com", "cu.ma", "temporary.link", "za.com", "pagedemo.co", "myvnc.com", "iceiy.com", "zapier.app",
 }
 _FREE_HOSTING_ENDINGS = tuple("." + host for host in FREE_HOSTING)
+_BLOGGER_ABROAD = re.compile(r"\.blogspot\.[a-z]{2,3}(\.[a-z]{2})?$")  # Blogger's addresses by country
 
 # Everyday words that are 1 edit from a brand. The +60 one-typo rule ignores these, because
 # nobody who types tomato.in meant zomato. Keep this list small: each word is a typo we no
@@ -101,6 +122,10 @@ ORDINARY_WORDS = {
     "mantra",                    # myntra
     "twister",                   # twitter
     "googly",                    # google (the cricket word)
+    "delivery",                  # delhivery
+    "finance",                   # binance
+    "protein",                   # protean
+    "ecobank",                   # ucobank: not a word, but a real bank elsewhere in the world
 }
 
 # Popular real sites, most popular first. Made once by build_popular.py from data/tranco.csv.
@@ -119,8 +144,11 @@ for _domain in POPULAR_DOMAINS[:2000]:
         POPULAR_NAMES.setdefault(_name, _domain)
 _POPULAR_NAME_LIST = list(POPULAR_NAMES)  # process.extractOne treats a dict differently, so use a list
 
+# The second line was added from the data: endings where phishing sites are at least 6 times as common as
+# they are among real sites (older feeds compared with the Tranco top 1M), the level of .click and .buzz.
 SUSPICIOUS_TLDS = {"xyz", "top", "tk", "ml", "ga", "cf", "gq", "buzz", "click",
-                   "zip", "shop", "online", "site", "live", "icu", "info"}
+                   "zip", "shop", "online", "site", "live", "icu", "info",
+                   "xin", "bond", "help", "cyou", "cfd", "sbs"}
 SUSPICIOUS_WORDS = ["login", "verify", "secure", "update", "kyc", "account",
                     "bank", "reward", "bonus", "free", "support", "confirm"]
 _SCAM_WORDS = "|".join(SUSPICIOUS_WORDS)  # regex piece used by brand_hidden_in()
@@ -169,6 +197,107 @@ def normalize(text: str) -> str:
     return text
 
 
+# ---------------- loading the watchlist ----------------
+
+def _load_brands() -> None:
+    """(Re)build every brand lookup from brands.json and brands_custom.json, in place."""
+    records = json.loads(BRANDS_FILE.read_text(encoding="utf-8"))["brands"]
+    if CUSTOM_BRANDS_FILE.exists():
+        try:
+            custom = json.loads(CUSTOM_BRANDS_FILE.read_text(encoding="utf-8"))
+            records = records + [{**record, "custom": True} for record in custom]
+        except (OSError, ValueError):
+            pass  # a damaged local file must not stop the detector
+    BRAND_RECORDS[:] = records
+    for table in (BRANDS, LEGIT_DOMAINS, BRAND_ALIASES, WEAK_BRANDS, _BRAND_FORMS, _FORM_TO_KEY):
+        table.clear()
+    for record in records:
+        BRANDS[record["key"]] = record["domains"]
+        LEGIT_DOMAINS.update(record["domains"])
+        if record.get("weak"):
+            WEAK_BRANDS.add(record["key"])
+        if record.get("no_typo"):
+            BRAND_ALIASES.add(record["key"])  # same rule as an alias: exact or hidden, never "looks similar"
+    for record in records:
+        for alias in record.get("aliases", []):
+            BRANDS.setdefault(alias, record["domains"])
+            BRAND_ALIASES.add(alias)
+        for alias in record.get("weak_aliases", []):
+            BRANDS.setdefault(alias, record["domains"])
+            WEAK_BRANDS.add(alias)
+    # normalize() reads "rn" as "m", so a real name such as karnatakabank must be compared in its
+    # normalized form too, otherwise karnatakabank-login.com would never match it.
+    for key in BRANDS:
+        form = normalize(key)
+        _BRAND_FORMS[key] = form
+        _FORM_TO_KEY.setdefault(form, key)
+    _LEGIT_LONGEST_FIRST[:] = sorted(LEGIT_DOMAINS, key=len, reverse=True)  # pay.google.com before google.com
+    for cached in (brand_match, _short_brand_pattern):
+        cached.cache_clear()
+    for listener in _brand_listeners:
+        listener()
+
+
+def on_brands_changed(listener) -> None:
+    """Ask to be told when a brand is added or removed. Also runs the listener once now."""
+    _brand_listeners.append(listener)
+    listener()
+
+
+def _custom_records() -> list:
+    return [{k: v for k, v in record.items() if k != "custom"} for record in BRAND_RECORDS if record.get("custom")]
+
+
+def _save_custom(records: list) -> None:
+    """Write the local file in one step, so a crash half way can't leave it damaged."""
+    temporary = CUSTOM_BRANDS_FILE.with_suffix(".tmp")
+    temporary.write_text(json.dumps(records, indent=1, ensure_ascii=False), encoding="utf-8")
+    os.replace(temporary, CUSTOM_BRANDS_FILE)
+
+
+def add_custom_brand(name: str, domain: str) -> dict:
+    """Add a brand from the website. It is stored in brands_custom.json and works straight away.
+
+    Being on the watchlist makes a domain instantly Safe, so this refuses anything that could turn a
+    fake into a trusted site. Raises ValueError with a message the page can show.
+    """
+    name = " ".join(str(name).split())[:60]
+    if not name:
+        raise ValueError("Enter the brand's name.")
+    parts, host = parse(str(domain))
+    host = host.removeprefix("www.")
+    if not re.fullmatch(r"[a-z0-9.-]+", host) or not parts.suffix or before_at(str(domain)) is not None:
+        raise ValueError("Enter the brand's own domain, like konarkbank.in.")
+    registered = f"{parts.domain}.{parts.suffix}"
+    key = parts.domain.replace("-", "")
+    if len(key) < 3:
+        raise ValueError("That name is too short to protect reliably.")
+    if is_free_hosted(host) or registered in FREE_HOSTING:
+        raise ValueError(f"{registered} is a free-hosting site, where anyone can publish. Enter the brand's own domain.")
+    if host in LEGIT_DOMAINS or registered in LEGIT_DOMAINS or key in BRANDS or is_trusted_bank(host):
+        raise ValueError(f"{host} is already on the watchlist.")
+    clean, _, _, is_homoglyph = brand_match(parts.domain)
+    copied = one_typo_brand(clean) or (_FORM_TO_KEY.get(clean) if is_homoglyph else None)
+    if copied:
+        raise ValueError(f"{host} looks like a fake of {BRANDS[copied][0]}, so it can't be added as a trusted brand.")
+    if len(_custom_records()) >= MAX_CUSTOM_BRANDS:
+        raise ValueError(f"The limit is {MAX_CUSTOM_BRANDS} added brands. Remove one first.")
+    record = {"key": key, "name": name, "category": "Added by you", "domains": [registered],
+              "words": [name.lower()] if len(name) >= 3 else []}
+    _save_custom(_custom_records() + [record])
+    _load_brands()
+    return record
+
+
+def remove_custom_brand(key: str) -> None:
+    """Remove a brand added on the website. Brands from brands.json can't be removed this way."""
+    remaining = [record for record in _custom_records() if record["key"] != key]
+    if len(remaining) == len(_custom_records()):
+        raise ValueError("That brand was not added on this computer.")
+    _save_custom(remaining)
+    _load_brands()
+
+
 def parse(url: str):
     """Split a link/domain into (parts, full_host). Works offline."""
     parts = extract(url.strip().lower())
@@ -194,7 +323,7 @@ def is_trusted_bank(host: str) -> bool:
 
 def is_free_hosted(host: str) -> bool:
     """True for a subdomain of a free-hosting site, e.g. anything.weebly.com."""
-    return host.endswith(_FREE_HOSTING_ENDINGS)
+    return host.endswith(_FREE_HOSTING_ENDINGS) or bool(_BLOGGER_ABROAD.search(host))
 
 
 def brand_hidden_in(text: str, brand: str) -> bool:
@@ -207,26 +336,41 @@ def brand_hidden_in(text: str, brand: str) -> bool:
       - 5 letters, start of word:  paytmkyc (so pineapple does not count as apple)
       - 3-4 letters, with nothing else but scam words: sbikyc, sbilogin, kycsbi
         (so lesbian does not count as sbi)
+      - a "weak" name (navi, axis), whatever its length, only with nothing else but scam words
     """
+    form = _BRAND_FORMS.get(brand, brand)
+    weak = brand in WEAK_BRANDS
     for part in normalize(text).split("."):
         words = part.split("-")
         joined = part.replace("-", "")
+        if form not in joined:  # the quick answer for nearly every brand
+            continue
         pieces = words + [joined]
-        if brand in pieces:
+        if weak:
+            if any(_short_brand_pattern(form).fullmatch(p) and p != form for p in pieces):
+                return True
+            continue
+        if form in pieces:
             return True
-        if len(brand) >= 6:
-            if brand in joined:
+        if len(form) >= 6:
+            return True  # already known to be inside
+        if len(form) == 5:
+            if any(p.startswith(form) for p in pieces):
                 return True
-        elif len(brand) == 5:
-            if any(p.startswith(brand) for p in pieces):
-                return True
-        elif any(re.fullmatch(f"(?:{_SCAM_WORDS})*{brand}(?:{_SCAM_WORDS})*", p) for p in pieces):
+        elif any(_short_brand_pattern(form).fullmatch(p) for p in pieces):
             return True
     return False
 
 
+@lru_cache(maxsize=1024)
+def _short_brand_pattern(form: str):
+    return re.compile(f"(?:{_SCAM_WORDS})*{re.escape(form)}(?:{_SCAM_WORDS})*")
+
+
 def subdomain_brand(subdomain: str):
     """Return the first brand used in a subdomain (paytm-login -> paytm), else None."""
+    if not subdomain:
+        return None
     return next((b for b in BRANDS if brand_hidden_in(subdomain, b)), None)
 
 
@@ -239,13 +383,14 @@ def at_imitates(hidden: str):
             return host[:host.index(ending) + len(ending)]
     # Compare whole dot-separated parts, otherwise netflix.com would match x.com.
     # Longest first, so pay.google.com wins over google.com.
-    for domain in sorted(LEGIT_DOMAINS, key=len, reverse=True):
+    for domain in _LEGIT_LONGEST_FIRST:
         if f".{domain}." in f".{host}.":
             return domain
     brand = subdomain_brand(host)
     return BRANDS[brand][0] if brand else None
 
 
+@lru_cache(maxsize=8192)  # analyze(), lookalike_target() and extract_features() all ask about the same name
 def brand_match(name: str):
     """Compare a domain name with every brand.
 
@@ -259,25 +404,37 @@ def brand_match(name: str):
     clean = normalize(name).replace("-", "")
     # normalize() reads 1 as l, but it can stand for i too: sb1 -> sbi
     one_as_i = normalize(name.replace("1", "i")).replace("-", "")
-    if one_as_i in BRANDS:
+    if one_as_i in _FORM_TO_KEY:
         clean = one_as_i
     best_brand, best_sim = None, 0
-    for brand in BRANDS:
-        sim = fuzz.ratio(clean, brand)
-        if clean != brand and brand_hidden_in(name, brand):
+    for brand, form in _BRAND_FORMS.items():
+        if brand in WEAK_BRANDS:
+            sim = 0                                # an ordinary word: looking similar means nothing
+        elif brand in BRAND_ALIASES:
+            sim = 100 if clean == form else 0      # canara must not match canada
+        else:
+            sim = fuzz.ratio(clean, form)
+        if clean != form and form in clean and brand_hidden_in(name, brand):
             sim = max(sim, 90)  # brand hidden inside, e.g. sbi-kyc-update
         if sim > best_sim:
             best_brand, best_sim = brand, sim
-    is_homoglyph = clean in BRANDS and name != clean
+    copied = _FORM_TO_KEY.get(clean)
+    is_homoglyph = copied is not None and copied not in WEAK_BRANDS and name != copied
     return clean, best_brand, best_sim, is_homoglyph
 
 
+def brand_name_of(clean: str) -> str:
+    """The real spelling of a cleaned name: kamatakabank -> karnatakabank. Others stay as they are."""
+    return _FORM_TO_KEY.get(clean, clean)
+
+
 def scam_words_brand(name: str):
-    """Return the 3-4 letter brand if the whole name is that brand plus only scam words, else None.
-    sbikyc, kycsbi and sbi-login count. lesbian and sbi-kyc-update-now don't."""
+    """Return the short or weak brand if the whole name is that brand plus only scam words, else None.
+    sbikyc, kycsbi, sbi-login and navi-login count. lesbian and sbi-kyc-update-now don't."""
     clean = normalize(name).replace("-", "")
-    for brand in BRANDS:
-        if len(brand) <= 4 and clean != brand and re.fullmatch(f"(?:{_SCAM_WORDS})*{brand}(?:{_SCAM_WORDS})*", clean):
+    for brand, form in _BRAND_FORMS.items():
+        if (len(form) <= 4 or brand in WEAK_BRANDS) and clean != form and form in clean \
+                and _short_brand_pattern(form).fullmatch(clean):
             return brand
     return None
 
@@ -293,8 +450,9 @@ def one_typo_brand(clean: str):
     Everyday words in ORDINARY_WORDS never count."""
     if clean in ORDINARY_WORDS:
         return None
-    for brand in BRANDS:
-        if len(brand) >= 5 and edit_distance(clean, brand) == 1:
+    for brand, form in _BRAND_FORMS.items():
+        if (len(form) >= 5 and abs(len(form) - len(clean)) <= 1 and brand not in BRAND_ALIASES
+                and brand not in WEAK_BRANDS and edit_distance(clean, form) == 1):
             return brand
     return None
 
@@ -306,6 +464,8 @@ def popular_lookalike(name: str):
     rapidfuzz knows lower is better and treats score_cutoff=1 as "at most 1 edit".
     """
     clean = normalize(name)
+    if clean in ORDINARY_WORDS:
+        return None
     if clean != name and clean in POPULAR_NAMES:  # fake letters spell it exactly: rnozilla, or Cyrillic
         return POPULAR_NAMES[clean]
     match = process.extractOne(clean, _POPULAR_NAME_LIST,
@@ -335,6 +495,9 @@ def top_site_in_subdomain(subdomain: str):
         if word in TOP_SITE_NAMES:
             return TOP_SITE_NAMES[word]
     return None
+
+
+_load_brands()  # after every function it needs exists
 
 
 # ---------------- ML features ----------------

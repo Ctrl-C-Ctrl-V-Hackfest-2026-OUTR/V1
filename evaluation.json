@@ -2,153 +2,153 @@
   "attacks": [
     {
       "attack_type": "missing_letter",
-      "type_named_correctly": 0.8665395614871306,
+      "type_named_correctly": 0.7788856304985338,
       "brands": {
-        "count": 206,
-        "rules": 1.0,
-        "final": 1.0,
-        "phishing": 0.9514563106796117
+        "count": 862,
+        "rules": 0.7761020881670534,
+        "final": 0.7784222737819025,
+        "phishing": 0.7378190255220418
       },
       "popular": {
         "count": 843,
-        "rules": 0.8837485172004745,
-        "final": 0.8932384341637011,
-        "phishing": 0.03440094899169632
+        "rules": 0.8813760379596679,
+        "final": 0.8873072360616845,
+        "phishing": 0.028469750889679714
       }
     },
     {
       "attack_type": "extra_letter",
-      "type_named_correctly": 0.8352941176470589,
+      "type_named_correctly": 0.7532033426183844,
       "brands": {
-        "count": 215,
-        "rules": 1.0,
-        "final": 1.0,
-        "phishing": 0.9302325581395349
+        "count": 905,
+        "rules": 0.7602209944751381,
+        "final": 0.7624309392265194,
+        "phishing": 0.7071823204419889
       },
       "popular": {
         "count": 890,
         "rules": 0.8438202247191011,
-        "final": 0.8539325842696629,
-        "phishing": 0.033707865168539325
+        "final": 0.849438202247191,
+        "phishing": 0.02696629213483146
       }
     },
     {
       "attack_type": "swapped_letters",
-      "type_named_correctly": 0.8763819095477386,
+      "type_named_correctly": 0.7985166872682324,
       "brands": {
-        "count": 196,
-        "rules": 0.9642857142857143,
-        "final": 0.9642857142857143,
-        "phishing": 0.9642857142857143
+        "count": 819,
+        "rules": 0.78998778998779,
+        "final": 0.7924297924297924,
+        "phishing": 0.7692307692307693
       },
       "popular": {
         "count": 799,
         "rules": 0.899874843554443,
-        "final": 0.9011264080100125,
-        "phishing": 0.04005006257822278
+        "final": 0.9061326658322904,
+        "phishing": 0.030037546933667083
       }
     },
     {
       "attack_type": "keyboard_neighbour",
-      "type_named_correctly": 0.8259292837715322,
+      "type_named_correctly": 0.7384272169548243,
       "brands": {
-        "count": 215,
-        "rules": 0.9302325581395349,
-        "final": 0.9302325581395349,
-        "phishing": 0.9302325581395349
+        "count": 905,
+        "rules": 0.7204419889502762,
+        "final": 0.7248618784530386,
+        "phishing": 0.7038674033149172
       },
       "popular": {
         "count": 888,
-        "rules": 0.838963963963964,
-        "final": 0.8412162162162162,
-        "phishing": 0.036036036036036036
+        "rules": 0.8378378378378378,
+        "final": 0.8434684684684685,
+        "phishing": 0.030405405405405407
       }
     },
     {
       "attack_type": "homoglyph",
-      "type_named_correctly": 0.8840579710144928,
+      "type_named_correctly": 0.8662131519274376,
       "brands": {
-        "count": 121,
-        "rules": 0.9752066115702479,
-        "final": 0.9752066115702479,
-        "phishing": 0.9752066115702479
+        "count": 451,
+        "rules": 0.9090909090909091,
+        "final": 0.9090909090909091,
+        "phishing": 0.9068736141906873
       },
       "popular": {
         "count": 431,
         "rules": 0.91415313225058,
-        "final": 0.9211136890951276,
-        "phishing": 0.058004640371229696
+        "final": 0.925754060324826,
+        "phishing": 0.09976798143851508
       }
     },
     {
       "attack_type": "cyrillic",
-      "type_named_correctly": 0.9448818897637795,
+      "type_named_correctly": 0.9458904109589041,
       "brands": {
-        "count": 186,
-        "rules": 1.0,
-        "final": 1.0,
-        "phishing": 1.0
+        "count": 757,
+        "rules": 0.9603698811096433,
+        "final": 0.9603698811096433,
+        "phishing": 0.9458388375165125
       },
       "popular": {
         "count": 703,
         "rules": 0.930298719772404,
-        "final": 0.930298719772404,
-        "phishing": 0.06827880512091039
+        "final": 0.9374110953058321,
+        "phishing": 0.049786628733997154
       }
     },
     {
       "attack_type": "hyphen",
-      "type_named_correctly": 0.7936507936507936,
+      "type_named_correctly": 0.828641370869033,
       "brands": {
-        "count": 201,
-        "rules": 1.0,
-        "final": 1.0,
-        "phishing": 1.0
+        "count": 827,
+        "rules": 0.9443772672309553,
+        "final": 0.9443772672309553,
+        "phishing": 0.9383313180169287
       },
       "popular": {
         "count": 807,
         "rules": 0.8983890954151177,
-        "final": 0.9083023543990086,
-        "phishing": 0.08921933085501858
+        "final": 0.9045848822800495,
+        "phishing": 0.11028500619578686
       }
     },
     {
       "attack_type": "combosquat",
-      "type_named_correctly": 0.7493212669683258,
+      "type_named_correctly": 0.807799442896936,
       "brands": {
-        "count": 215,
-        "rules": 0.9906976744186047,
-        "final": 0.9906976744186047,
-        "phishing": 0.6697674418604651
+        "count": 905,
+        "rules": 0.9248618784530387,
+        "final": 0.9469613259668508,
+        "phishing": 0.8198895027624309
       },
       "popular": {
         "count": 890,
-        "rules": 0.755056179775281,
-        "final": 0.8629213483146068,
-        "phishing": 0.4134831460674157
+        "rules": 0.7528089887640449,
+        "final": 0.8932584269662921,
+        "phishing": 0.4752808988764045
       }
     },
     {
       "attack_type": "tld_swap",
-      "type_named_correctly": 0.7403100775193798,
+      "type_named_correctly": 0.7848699763593381,
       "brands": {
-        "count": 199,
-        "rules": 1.0,
-        "final": 1.0,
-        "phishing": 0.4371859296482412
+        "count": 859,
+        "rules": 0.9569266589057043,
+        "final": 0.9755529685681025,
+        "phishing": 0.42956926658905703
       },
       "popular": {
         "count": 833,
         "rules": 0.7671068427370948,
         "final": 0.8643457382953181,
-        "phishing": 0.35294117647058826
+        "phishing": 0.3397358943577431
       }
     },
     {
       "attack_type": "subdomain_abuse",
-      "type_named_correctly": 0.7677224736048266,
+      "type_named_correctly": 0.8180129990714949,
       "brands": {
-        "count": 129,
+        "count": 543,
         "rules": 1.0,
         "final": 1.0,
         "phishing": 1.0
@@ -161,14 +161,106 @@
       }
     }
   ],
-  "n_fakes": 9501,
+  "n_fakes": 15451,
   "false_alarms": {
     "count": 2000,
-    "rules": 0.036,
+    "rules": 0.042,
     "final": 0.0575,
-    "phishing": 0.0045
+    "phishing": 0.003
   },
-  "ms_per_domain": 8.246276234080598,
-  "batch_ms_per_domain": 1.7407119145354342,
-  "batch_per_second": 574.4775983031533
+  "ms_per_domain": 6.265698330205068,
+  "batch_ms_per_domain": 0.9179544430780419,
+  "batch_per_second": 1089.378680544153,
+  "real_world": {
+    "n_phishing": 6357,
+    "n_legit": 9192,
+    "flagged": {
+      "recall": 0.786377221960044,
+      "false_alarm_rate": 0.028938207136640557,
+      "precision": 0.9494776828110162
+    },
+    "phishing_verdict": {
+      "recall": 0.16627339940223376,
+      "false_alarm_rate": 0.0010879025239338555,
+      "precision": 0.9906279287722587
+    },
+    "groups": {
+      "gov_nic_in": {
+        "count": 1192,
+        "label": 0,
+        "flagged": 0.0,
+        "phishing": 0.0
+      },
+      "india_small": {
+        "count": 3000,
+        "label": 0,
+        "flagged": 0.016666666666666666,
+        "phishing": 0.0016666666666666668
+      },
+      "openphish_now": {
+        "count": 259,
+        "label": 1,
+        "flagged": 0.8494208494208494,
+        "phishing": 0.07722007722007722
+      },
+      "phishtank_recent": {
+        "count": 6098,
+        "label": 1,
+        "flagged": 0.7836995736306986,
+        "phishing": 0.17005575598556905
+      },
+      "tranco_tail": {
+        "count": 5000,
+        "label": 0,
+        "flagged": 0.0432,
+        "phishing": 0.001
+      }
+    },
+    "time_cut": "2026-07-01"
+  },
+  "messages": {
+    "cases": {
+      "dev": {
+        "passed": 43,
+        "total": 43
+      },
+      "dev_genuine": {
+        "passed": 11,
+        "total": 11
+      },
+      "dev_scam": {
+        "passed": 32,
+        "total": 32
+      },
+      "holdout": {
+        "passed": 73,
+        "total": 77
+      },
+      "holdout2": {
+        "passed": 27,
+        "total": 30
+      },
+      "holdout2_genuine": {
+        "passed": 12,
+        "total": 12
+      },
+      "holdout2_scam": {
+        "passed": 15,
+        "total": 18
+      },
+      "holdout_genuine": {
+        "passed": 36,
+        "total": 36
+      },
+      "holdout_scam": {
+        "passed": 37,
+        "total": 41
+      }
+    },
+    "uci_everyday": {
+      "count": 4827,
+      "flagged": 0.001243008079552517,
+      "scam": 0.0
+    }
+  }
 }

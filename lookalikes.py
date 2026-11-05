@@ -11,7 +11,7 @@ import csv
 import random
 from pathlib import Path
 
-from features import BRANDS, CYRILLIC_LETTERS, LEGIT_DOMAINS, POPULAR_DOMAINS, POPULAR_SET, extract
+from features import BRAND_RECORDS, CYRILLIC_LETTERS, LEGIT_DOMAINS, POPULAR_DOMAINS, POPULAR_SET, TRUSTED_ENDINGS, extract
 
 OUTPUT = Path(__file__).parent / "data" / "synthetic_pairs.csv"
 MAX_PER_TYPE = 5   # fakes per genuine domain, per attack type (keeps the file a sensible size)
@@ -92,7 +92,9 @@ def variants(domain: str) -> dict:
     """All the fakes of one genuine domain, as {attack_type: [fake domains]}."""
     parts = extract(domain)
     name, suffix = parts.domain, parts.suffix
-    fakes = {attack: [f"{fake}.{suffix}" for fake in make(name) if fake and fake != name and fake.strip("-") == fake]
+    # Nobody can register a fake under .gov.in or .bank.in, so a real scammer uses plain .in instead
+    ending = "in" if f".{suffix}" in TRUSTED_ENDINGS else suffix
+    fakes = {attack: [f"{fake}.{ending}" for fake in make(name) if fake and fake != name and fake.strip("-") == fake]
              for attack, make in NAME_ATTACKS.items()}
     fakes["tld_swap"] = [f"{name}.{tld}" for tld in SWAP_TLDS if tld != suffix]
     fakes["subdomain_abuse"] = [f"{name}.secure-login.xyz", f"{name}-login.verify-account.top",
@@ -109,7 +111,7 @@ def is_real(host: str) -> bool:
 
 def build_pairs() -> list:
     rng = random.Random(SEED)
-    brand_domains = [d for domains in BRANDS.values() for d in domains]
+    brand_domains = [record["domains"][0] for record in BRAND_RECORDS]  # each brand's main address
     # Skip very short names (t.co, x.com): deleting a letter from them means nothing
     genuine = [d for d in dict.fromkeys(brand_domains + POPULAR_DOMAINS[:200]) if len(extract(d).domain) >= 3]
 

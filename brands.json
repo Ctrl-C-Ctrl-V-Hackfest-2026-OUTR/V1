@@ -1,0 +1,3013 @@
+{
+ "_how_to_add": "Add a record here to watch a new brand: key = the name inside its web address, domains = its real addresses (first one is shown as 'the real site'), words = how a message names it. Check each domain on its live site first. Then run python test_rules.py and python evaluate.py.",
+ "_fields": "aliases and no_typo = match when exact or hidden, but never as 'one typo away' or 'looks similar', because too many real sites are that close (counted on the Tranco top 1M). weak and weak_aliases = names that are also ordinary words: they only match with nothing but scam words around them.",
+ "brands": [
+  {
+   "key": "sbi",
+   "name": "SBI",
+   "category": "Public sector bank",
+   "domains": [
+    "sbi.co.in",
+    "sbi.bank.in"
+   ],
+   "words": [
+    "sbi",
+    "state bank",
+    "yono"
+   ],
+   "aliases": [
+    "yonosbi"
+   ],
+   "weak_aliases": [
+    "yono"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "sbi.co.in": "site title: State Bank of India",
+    "sbi.bank.in": "site title: SBI - Loans, Accounts, Cards, Investment, Deposits, Net Bank"
+   }
+  },
+  {
+   "key": "onlinesbi",
+   "name": "SBI Online",
+   "category": "Public sector bank",
+   "domains": [
+    "onlinesbi.sbi"
+   ],
+   "words": [
+    "onlinesbi"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "onlinesbi.sbi": "site title: State Bank of India"
+   }
+  },
+  {
+   "key": "hdfcbank",
+   "name": "HDFC Bank",
+   "category": "Private bank",
+   "domains": [
+    "hdfcbank.com",
+    "hdfc.bank.in",
+    "hdfc.com"
+   ],
+   "words": [
+    "hdfc"
+   ],
+   "aliases": [
+    "hdfc"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "hdfcbank.com": "site title: Personal Banking & Netbanking Services | HDFC Bank",
+    "hdfc.bank.in": "site title: Personal Banking & Netbanking Services | HDFC Bank",
+    "hdfc.com": "site title: Housing Finance | Home Finance Company | HDFC Bank Ltd"
+   }
+  },
+  {
+   "key": "icicibank",
+   "name": "ICICI Bank",
+   "category": "Private bank",
+   "domains": [
+    "icicibank.com",
+    "icici.bank.in"
+   ],
+   "words": [
+    "icici"
+   ],
+   "aliases": [
+    "icici"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "icicibank.com": "site title: ICICI Bank - Personal, Business, Corporate and NRI Banking O",
+    "icici.bank.in": "site title: ICICI Bank - Personal, Business, Corporate and NRI Banking O"
+   }
+  },
+  {
+   "key": "axisbank",
+   "name": "Axis Bank",
+   "category": "Private bank",
+   "domains": [
+    "axisbank.com",
+    "axis.bank.in"
+   ],
+   "words": [
+    "axis bank"
+   ],
+   "weak_aliases": [
+    "axis"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "axisbank.com": "site title: Axis Bank Sitemap - Explore All Products, Services & Offers",
+    "axis.bank.in": "site title: Personal Banking | Internet Banking | Corporate, NRI Banking"
+   }
+  },
+  {
+   "key": "paytm",
+   "name": "Paytm",
+   "category": "Payments and wallets",
+   "domains": [
+    "paytm.com",
+    "paytm.in",
+    "paytm.me"
+   ],
+   "words": [
+    "paytm"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "paytm.com": "site title: Paytm: Secure & Fast UPI Payments, Recharge Mobile & Pay Bil",
+    "paytm.in": "blocks automated checks; Tranco rank 58,724",
+    "paytm.me": "site title: Paytm: Secure & Fast UPI Payments, Recharge Mobile & Pay Bil"
+   }
+  },
+  {
+   "key": "phonepe",
+   "name": "PhonePe",
+   "category": "Payments and wallets",
+   "domains": [
+    "phonepe.com"
+   ],
+   "words": [
+    "phonepe",
+    "phone pe"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "phonepe.com": "site title: PhonePe: UPI Payments, Investment, Insurance, Recharges, DTH"
+   }
+  },
+  {
+   "key": "google",
+   "name": "Google",
+   "category": "Global tech",
+   "domains": [
+    "google.com",
+    "google.co.in"
+   ],
+   "words": [
+    "google"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "google.com": "site title: Google",
+    "google.co.in": "site title: Google"
+   }
+  },
+  {
+   "key": "amazon",
+   "name": "Amazon",
+   "category": "Shopping and delivery",
+   "domains": [
+    "amazon.in",
+    "amazon.com"
+   ],
+   "words": [
+    "amazon"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "amazon.in": "redirect target of amazonpay.in",
+    "amazon.com": "blocks automated checks; Tranco rank 29"
+   }
+  },
+  {
+   "key": "flipkart",
+   "name": "Flipkart",
+   "category": "Shopping and delivery",
+   "domains": [
+    "flipkart.com"
+   ],
+   "words": [
+    "flipkart"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "flipkart.com": "blocks automated checks; Tranco rank 839"
+   }
+  },
+  {
+   "key": "irctc",
+   "name": "IRCTC",
+   "category": "Government",
+   "domains": [
+    "irctc.co.in",
+    "irctc.com"
+   ],
+   "words": [
+    "irctc"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "irctc.co.in": "blocks automated checks; Tranco rank 6,754",
+    "irctc.com": "site title: IRCTC Corporate Portal"
+   }
+  },
+  {
+   "key": "microsoft",
+   "name": "Microsoft",
+   "category": "Global tech",
+   "domains": [
+    "microsoft.com"
+   ],
+   "words": [
+    "microsoft"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "microsoft.com": "blocks automated checks; Tranco rank 9"
+   }
+  },
+  {
+   "key": "apple",
+   "name": "Apple",
+   "category": "Global tech",
+   "domains": [
+    "apple.com"
+   ],
+   "words": [
+    "apple"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "apple.com": "site title: Apple"
+   }
+  },
+  {
+   "key": "facebook",
+   "name": "Facebook",
+   "category": "Global tech",
+   "domains": [
+    "facebook.com"
+   ],
+   "words": [
+    "facebook"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "facebook.com": "blocks automated checks; Tranco rank 5"
+   }
+  },
+  {
+   "key": "instagram",
+   "name": "Instagram",
+   "category": "Global tech",
+   "domains": [
+    "instagram.com"
+   ],
+   "words": [
+    "instagram"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "instagram.com": "site title: Instagram"
+   }
+  },
+  {
+   "key": "whatsapp",
+   "name": "WhatsApp",
+   "category": "Global tech",
+   "domains": [
+    "whatsapp.com"
+   ],
+   "words": [
+    "whatsapp"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "whatsapp.com": "blocks automated checks; Tranco rank 66"
+   }
+  },
+  {
+   "key": "netflix",
+   "name": "Netflix",
+   "category": "Global tech",
+   "domains": [
+    "netflix.com"
+   ],
+   "words": [
+    "netflix"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "netflix.com": "site title: Netflix India – Watch Shows Online, Watch Movies Online"
+   }
+  },
+  {
+   "key": "paypal",
+   "name": "PayPal",
+   "category": "Payments and wallets",
+   "domains": [
+    "paypal.com"
+   ],
+   "words": [
+    "paypal"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "paypal.com": "blocks automated checks; Tranco rank 175"
+   }
+  },
+  {
+   "key": "incometax",
+   "name": "Income Tax",
+   "category": "Government",
+   "domains": [
+    "incometax.gov.in",
+    "incometaxindia.gov.in"
+   ],
+   "words": [
+    "income tax"
+   ],
+   "aliases": [
+    "incometaxindia"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "incometax.gov.in": "site title: Home | Income Tax Department",
+    "incometaxindia.gov.in": "blocks automated checks; Tranco rank 29,221"
+   }
+  },
+  {
+   "key": "uidai",
+   "name": "Aadhaar",
+   "category": "Government",
+   "domains": [
+    "uidai.gov.in"
+   ],
+   "words": [
+    "aadhaar",
+    "aadhar",
+    "uidai"
+   ],
+   "aliases": [
+    "aadhaar",
+    "aadhar",
+    "myaadhaar"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "uidai.gov.in": "site title: Home - Unique Identification Authority of India | Government"
+   }
+  },
+  {
+   "key": "youtube",
+   "name": "YouTube",
+   "category": "Global tech",
+   "domains": [
+    "youtube.com"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "youtube.com": "site title: YouTube"
+   }
+  },
+  {
+   "key": "gmail",
+   "name": "Gmail",
+   "category": "Global tech",
+   "domains": [
+    "gmail.com"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "gmail.com": "redirects to accounts.google.com"
+   }
+  },
+  {
+   "key": "linkedin",
+   "name": "LinkedIn",
+   "category": "Global tech",
+   "domains": [
+    "linkedin.com"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "linkedin.com": "site title: Log In or Sign Up | LinkedIn"
+   }
+  },
+  {
+   "key": "twitter",
+   "name": "X (Twitter)",
+   "category": "Global tech",
+   "domains": [
+    "twitter.com",
+    "x.com"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "twitter.com": "site title: X. It’s what’s happening / X",
+    "x.com": "site title: X. It’s what’s happening / X"
+   }
+  },
+  {
+   "key": "telegram",
+   "name": "Telegram",
+   "category": "Global tech",
+   "domains": [
+    "telegram.org"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "telegram.org": "site title: Telegram Messenger"
+   }
+  },
+  {
+   "key": "kotak",
+   "name": "Kotak",
+   "category": "Private bank",
+   "domains": [
+    "kotak.com",
+    "kotak.bank.in",
+    "kotak811.bank.in"
+   ],
+   "words": [
+    "kotak"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "kotak.com": "site title: Savings Accounts, Personal Loans and Credit Cards - Kotak Ma",
+    "kotak.bank.in": "site title: Savings Accounts, Personal Loans and Credit Cards - Kotak Ma",
+    "kotak811.bank.in": "under .bank.in, which only RBI-authorised banks can register (site blocks automated checks)"
+   }
+  },
+  {
+   "key": "pnbindia",
+   "name": "PNB",
+   "category": "Public sector bank",
+   "domains": [
+    "pnbindia.in",
+    "pnb.bank.in"
+   ],
+   "words": [
+    "pnb",
+    "punjab national"
+   ],
+   "aliases": [
+    "pnb"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "pnbindia.in": "site title: Personal Banking | Corporate Banking | Netbanking Services| ",
+    "pnb.bank.in": "site title: Personal Banking | Corporate Banking | Netbanking Services| "
+   }
+  },
+  {
+   "key": "bankofbaroda",
+   "name": "Bank of Baroda",
+   "category": "Public sector bank",
+   "domains": [
+    "bankofbaroda.in",
+    "bankofbaroda.bank.in",
+    "bankofbaroda.com",
+    "bobibanking.com"
+   ],
+   "words": [
+    "bank of baroda",
+    "bob world"
+   ],
+   "weak_aliases": [
+    "bob"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bankofbaroda.in": "redirects to bankofbaroda.bank.in",
+    "bankofbaroda.bank.in": "redirect target of bankofbaroda.com",
+    "bankofbaroda.com": "redirects to bankofbaroda.bank.in",
+    "bobibanking.com": "site title: bob World Internet Bank of Baroda-India's International Bank"
+   }
+  },
+  {
+   "key": "canarabank",
+   "name": "Canara Bank",
+   "category": "Public sector bank",
+   "domains": [
+    "canarabank.com",
+    "canarabank.bank.in"
+   ],
+   "words": [
+    "canara"
+   ],
+   "aliases": [
+    "canara"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "canarabank.com": "site title: Canara Bank - Personal & Corporate Banking Services",
+    "canarabank.bank.in": "site title: Canara Bank - Personal & Corporate Banking Services"
+   }
+  },
+  {
+   "key": "yesbank",
+   "name": "Yes Bank",
+   "category": "Private bank",
+   "domains": [
+    "yesbank.in",
+    "yes.bank.in"
+   ],
+   "words": [
+    "yes bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "yesbank.in": "redirects to yes.bank.in",
+    "yes.bank.in": "redirect target of yesbank.in"
+   }
+  },
+  {
+   "key": "indusind",
+   "name": "IndusInd",
+   "category": "Private bank",
+   "domains": [
+    "indusind.com",
+    "indusind.bank.in"
+   ],
+   "words": [
+    "indusind"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "indusind.com": "site title: IndusInd Bank - Cards, Loans, Accounts, Personal & NRI Banki",
+    "indusind.bank.in": "site title: IndusInd Bank - Cards, Loans, Accounts, Personal & NRI Banki"
+   }
+  },
+  {
+   "key": "googlepay",
+   "name": "Google Pay",
+   "category": "Payments and wallets",
+   "domains": [
+    "pay.google.com"
+   ],
+   "words": [
+    "google pay",
+    "gpay"
+   ],
+   "aliases": [
+    "gpay"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "pay.google.com": "redirects to accounts.google.com"
+   }
+  },
+  {
+   "key": "bhimupi",
+   "name": "BHIM UPI",
+   "category": "Payments and wallets",
+   "domains": [
+    "bhimupi.org.in"
+   ],
+   "words": [
+    "bhim"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bhimupi.org.in": "blocks automated checks; Tranco rank 510,036"
+   }
+  },
+  {
+   "key": "npci",
+   "name": "NPCI",
+   "category": "Payments and wallets",
+   "domains": [
+    "npci.org.in"
+   ],
+   "words": [
+    "npci"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "npci.org.in": "blocks automated checks; Tranco rank 7,282"
+   }
+  },
+  {
+   "key": "myntra",
+   "name": "Myntra",
+   "category": "Shopping and delivery",
+   "domains": [
+    "myntra.com"
+   ],
+   "words": [
+    "myntra"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "myntra.com": "site title: Online Shopping for Women, Men, Kids Fashion & Lifestyle - M"
+   }
+  },
+  {
+   "key": "meesho",
+   "name": "Meesho",
+   "category": "Shopping and delivery",
+   "domains": [
+    "meesho.com"
+   ],
+   "words": [
+    "meesho"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "meesho.com": "blocks automated checks; Tranco rank 1,236"
+   }
+  },
+  {
+   "key": "swiggy",
+   "name": "Swiggy",
+   "category": "Shopping and delivery",
+   "domains": [
+    "swiggy.com",
+    "swiggy.in"
+   ],
+   "words": [
+    "swiggy"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "swiggy.com": "blocks automated checks; Tranco rank 6,632",
+    "swiggy.in": "blocks automated checks; Tranco rank 308,752"
+   }
+  },
+  {
+   "key": "zomato",
+   "name": "Zomato",
+   "category": "Shopping and delivery",
+   "domains": [
+    "zomato.com"
+   ],
+   "words": [
+    "zomato"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "zomato.com": "site title: Zomato"
+   }
+  },
+  {
+   "key": "airtel",
+   "name": "Airtel",
+   "category": "Telecom",
+   "domains": [
+    "airtel.in",
+    "airtel.com"
+   ],
+   "words": [
+    "airtel"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "airtel.in": "site title: Airtel: Wi-Fi, Postpaid, Prepaid, DTH, Bank & Business",
+    "airtel.com": "site title: Airtel: Wi-Fi, Postpaid, Prepaid, DTH, Bank & Business"
+   }
+  },
+  {
+   "key": "jio",
+   "name": "Jio",
+   "category": "Telecom",
+   "domains": [
+    "jio.com"
+   ],
+   "words": [
+    "jio"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "jio.com": "blocks automated checks; Tranco rank 3,389"
+   }
+  },
+  {
+   "key": "epfindia",
+   "name": "EPFO",
+   "category": "Government",
+   "domains": [
+    "epfindia.gov.in",
+    "epfo.gov.in"
+   ],
+   "words": [
+    "epf",
+    "epfo"
+   ],
+   "aliases": [
+    "epfo"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "epfindia.gov.in": "site title: Employees' Provident Fund Organisation",
+    "epfo.gov.in": "site title: Employees' Provident Fund Organisation"
+   }
+  },
+  {
+   "key": "indiapost",
+   "name": "India Post",
+   "category": "Government",
+   "domains": [
+    "indiapost.gov.in"
+   ],
+   "words": [
+    "india post"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "indiapost.gov.in": "site title: India Post"
+   }
+  },
+  {
+   "key": "unionbankofindia",
+   "name": "Union Bank of India",
+   "category": "Public sector bank",
+   "domains": [
+    "unionbankofindia.co.in",
+    "unionbankofindia.bank.in"
+   ],
+   "words": [
+    "union bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "unionbankofindia.co.in": "blocks automated checks; Tranco rank 100,772",
+    "unionbankofindia.bank.in": "site title: Union Bank of India - Personal, Corporate & NRI Banking Onli"
+   }
+  },
+  {
+   "key": "bankofindia",
+   "name": "Bank of India",
+   "category": "Public sector bank",
+   "domains": [
+    "bankofindia.co.in",
+    "bankofindia.bank.in",
+    "bankofindia.com"
+   ],
+   "words": [
+    "bank of india"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bankofindia.co.in": "blocks automated checks; Tranco rank 224,825",
+    "bankofindia.bank.in": "under .bank.in, which only RBI-authorised banks can register (site blocks automated checks)",
+    "bankofindia.com": "blocks automated checks; Tranco rank 447,437"
+   }
+  },
+  {
+   "key": "indianbank",
+   "name": "Indian Bank",
+   "category": "Public sector bank",
+   "domains": [
+    "indianbank.in",
+    "indianbank.bank.in"
+   ],
+   "words": [
+    "indian bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "indianbank.in": "redirects to indianbank.bank.in",
+    "indianbank.bank.in": "redirect target of indianbank.in"
+   }
+  },
+  {
+   "key": "centralbankofindia",
+   "name": "Central Bank of India",
+   "category": "Public sector bank",
+   "domains": [
+    "centralbankofindia.co.in",
+    "centralbank.bank.in"
+   ],
+   "words": [
+    "central bank of india"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "centralbankofindia.co.in": "site title: Welcome to Central Bank of India | Central Bank of India",
+    "centralbank.bank.in": "site title: Welcome to Central Bank of India | Central Bank of India"
+   }
+  },
+  {
+   "key": "iob",
+   "name": "Indian Overseas Bank",
+   "category": "Public sector bank",
+   "domains": [
+    "iob.in",
+    "iob.bank.in"
+   ],
+   "words": [
+    "indian overseas bank"
+   ],
+   "weak": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "iob.in": "site title: Indian Overseas Bank: Personal Banking | One Stop Banking So",
+    "iob.bank.in": "site title: Indian Overseas Bank: Personal Banking | One Stop Banking So"
+   }
+  },
+  {
+   "key": "ucobank",
+   "name": "UCO Bank",
+   "category": "Public sector bank",
+   "domains": [
+    "ucobank.com",
+    "uco.bank.in"
+   ],
+   "words": [
+    "uco bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "ucobank.com": "site title: Welcome to UCO Bank | Trusted Banking for Every Need",
+    "uco.bank.in": "site title: Welcome to UCO Bank | Trusted Banking for Every Need"
+   }
+  },
+  {
+   "key": "bankofmaharashtra",
+   "name": "Bank of Maharashtra",
+   "category": "Public sector bank",
+   "domains": [
+    "bankofmaharashtra.bank.in"
+   ],
+   "words": [
+    "bank of maharashtra"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bankofmaharashtra.bank.in": "site title: Bank of Maharashtra: Loans, Deposits, MSME, Govt. schemes"
+   }
+  },
+  {
+   "key": "punjabandsindbank",
+   "name": "Punjab & Sind Bank",
+   "category": "Public sector bank",
+   "domains": [
+    "punjabandsind.bank.in"
+   ],
+   "words": [
+    "punjab and sind",
+    "punjab & sind"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "punjabandsind.bank.in": "site title: Punjab & Sind Bank | Saving Accounts | Loan Schemes"
+   }
+  },
+  {
+   "key": "idfcfirstbank",
+   "name": "IDFC First Bank",
+   "category": "Private bank",
+   "domains": [
+    "idfcfirstbank.com",
+    "idfcfirst.bank.in"
+   ],
+   "words": [
+    "idfc"
+   ],
+   "aliases": [
+    "idfc"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "idfcfirstbank.com": "site title: IDFC FIRST Bank -  Personal Banking, Loans, Accounts, Cards,",
+    "idfcfirst.bank.in": "site title: IDFC FIRST Bank -  Personal Banking, Loans, Accounts, Cards,"
+   }
+  },
+  {
+   "key": "idbibank",
+   "name": "IDBI Bank",
+   "category": "Private bank",
+   "domains": [
+    "idbibank.in",
+    "idbi.bank.in",
+    "idbi.com"
+   ],
+   "words": [
+    "idbi"
+   ],
+   "aliases": [
+    "idbi"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "idbibank.in": "site title: Personal & Corporate Banking | MSME & Agri banking - IDBI Ba",
+    "idbi.bank.in": "site title: Personal & Corporate Banking | MSME & Agri banking - IDBI Ba",
+    "idbi.com": "site title: Personal & Corporate Banking | MSME & Agri banking - IDBI Ba"
+   }
+  },
+  {
+   "key": "federalbank",
+   "name": "Federal Bank",
+   "category": "Private bank",
+   "domains": [
+    "federalbank.co.in",
+    "federal.bank.in"
+   ],
+   "words": [
+    "federal bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "federalbank.co.in": "redirects to validate.perfdrive.com",
+    "federal.bank.in": "redirects to validate.perfdrive.com"
+   }
+  },
+  {
+   "key": "rblbank",
+   "name": "RBL Bank",
+   "category": "Private bank",
+   "domains": [
+    "rblbank.com",
+    "rbl.bank.in"
+   ],
+   "words": [
+    "rbl"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "rblbank.com": "site title: Savings & Current Accounts, Loans, Credit Cards, NRI Service",
+    "rbl.bank.in": "site title: Savings & Current Accounts, Loans, Credit Cards, NRI Service"
+   }
+  },
+  {
+   "key": "bandhanbank",
+   "name": "Bandhan Bank",
+   "category": "Private bank",
+   "domains": [
+    "bandhanbank.com",
+    "bandhan.bank.in"
+   ],
+   "words": [
+    "bandhan"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bandhanbank.com": "site title: Bandhan Bank | Home Page",
+    "bandhan.bank.in": "site title: Bandhan Bank | Home Page"
+   }
+  },
+  {
+   "key": "southindianbank",
+   "name": "South Indian Bank",
+   "category": "Private bank",
+   "domains": [
+    "southindianbank.com",
+    "southindianbank.bank.in"
+   ],
+   "words": [
+    "south indian bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "southindianbank.com": "blocks automated checks; Tranco rank 275,097",
+    "southindianbank.bank.in": "under .bank.in, which only RBI-authorised banks can register (site blocks automated checks)"
+   }
+  },
+  {
+   "key": "karnatakabank",
+   "name": "Karnataka Bank",
+   "category": "Private bank",
+   "domains": [
+    "karnatakabank.com",
+    "karnatakabank.bank.in"
+   ],
+   "words": [
+    "karnataka bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "karnatakabank.com": "site title: Karnataka Bank: Personal Banking, Agri Banking, NRI Banking ",
+    "karnatakabank.bank.in": "site title: Karnataka Bank: Personal Banking, Agri Banking, NRI Banking "
+   }
+  },
+  {
+   "key": "kvb",
+   "name": "Karur Vysya Bank",
+   "category": "Private bank",
+   "domains": [
+    "kvb.bank.in"
+   ],
+   "words": [
+    "karur vysya"
+   ],
+   "weak": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "kvb.bank.in": "site title: Karur Vysya Bank - KVB"
+   }
+  },
+  {
+   "key": "cityunionbank",
+   "name": "City Union Bank",
+   "category": "Private bank",
+   "domains": [
+    "cityunionbank.com",
+    "cityunionbank.bank.in"
+   ],
+   "words": [
+    "city union bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "cityunionbank.com": "site title: City Union Bank – Trusted Banking Solutions | Accounts, Loan",
+    "cityunionbank.bank.in": "site title: City Union Bank – Trusted Banking Solutions | Accounts, Loan"
+   }
+  },
+  {
+   "key": "tmbnet",
+   "name": "Tamilnad Mercantile Bank",
+   "category": "Private bank",
+   "domains": [
+    "tmbnet.in",
+    "tmb.bank.in"
+   ],
+   "words": [
+    "tamilnad mercantile"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "tmbnet.in": "site title: TMB Internet Banking - Secure Online Banking Services",
+    "tmb.bank.in": "site title: Home Page | TMB"
+   }
+  },
+  {
+   "key": "jkbank",
+   "name": "J&K Bank",
+   "category": "Private bank",
+   "domains": [
+    "jkbank.com",
+    "jkb.bank.in"
+   ],
+   "words": [
+    "j&k bank",
+    "jammu and kashmir bank"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "jkbank.com": "site title: Home | Official Website of Jammu and Kashmir Bank",
+    "jkb.bank.in": "site title: Home | Official Website of Jammu and Kashmir Bank"
+   }
+  },
+  {
+   "key": "dcbbank",
+   "name": "DCB Bank",
+   "category": "Private bank",
+   "domains": [
+    "dcbbank.com",
+    "dcb.bank.in"
+   ],
+   "words": [
+    "dcb bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "dcbbank.com": "site title: Online Internet Banking and Personal Banking Services - DCB ",
+    "dcb.bank.in": "site title: Online Internet Banking and Personal Banking Services - DCB "
+   }
+  },
+  {
+   "key": "csb",
+   "name": "CSB Bank",
+   "category": "Private bank",
+   "domains": [
+    "csb.co.in",
+    "csb.bank.in"
+   ],
+   "words": [
+    "csb bank"
+   ],
+   "weak": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "csb.co.in": "site title: Experience Heritage, Trust & Innovation in Banking | CSB Ban",
+    "csb.bank.in": "site title: Experience Heritage, Trust & Innovation in Banking | CSB Ban"
+   }
+  },
+  {
+   "key": "dhanbank",
+   "name": "Dhanlaxmi Bank",
+   "category": "Private bank",
+   "domains": [
+    "dhanbank.com",
+    "dhan.bank.in"
+   ],
+   "words": [
+    "dhanlaxmi"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "dhanbank.com": "site title: Welcome To Dhanlaxmi Bank | Dhanlaxmi Bank",
+    "dhan.bank.in": "site title: Welcome To Dhanlaxmi Bank | Dhanlaxmi Bank"
+   }
+  },
+  {
+   "key": "nainitalbank",
+   "name": "Nainital Bank",
+   "category": "Private bank",
+   "domains": [
+    "nainitalbank.co.in",
+    "nainitalbank.bank.in"
+   ],
+   "words": [
+    "nainital bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "nainitalbank.co.in": "site title: Nainital Bank | Personal & Business Banking Services",
+    "nainitalbank.bank.in": "site title: Nainital Bank | Personal & Business Banking Services"
+   }
+  },
+  {
+   "key": "aubank",
+   "name": "AU Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "aubank.in",
+    "au.bank.in"
+   ],
+   "words": [
+    "au bank",
+    "au small finance"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "aubank.in": "site title: Personal, Business, Corporate, and NRI Banking | AU Small Fi",
+    "au.bank.in": "site title: Personal, Business, Corporate, and NRI Banking | AU Small Fi"
+   }
+  },
+  {
+   "key": "equitasbank",
+   "name": "Equitas Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "equitasbank.com",
+    "equitas.bank.in"
+   ],
+   "words": [
+    "equitas"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "equitasbank.com": "redirects to equitas.bank.in",
+    "equitas.bank.in": "under .bank.in, which only RBI-authorised banks can register (site blocks automated checks)"
+   }
+  },
+  {
+   "key": "ujjivansfb",
+   "name": "Ujjivan Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "ujjivansfb.in",
+    "ujjivansfb.bank.in"
+   ],
+   "words": [
+    "ujjivan"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "ujjivansfb.in": "site title: Ujjivan SFB: Personal, Business and NRI Banking",
+    "ujjivansfb.bank.in": "site title: Ujjivan SFB: Personal, Business and NRI Banking"
+   }
+  },
+  {
+   "key": "janabank",
+   "name": "Jana Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "janabank.com",
+    "jana.bank.in"
+   ],
+   "words": [
+    "jana bank",
+    "jana small finance"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "janabank.com": "site title: Jana Small Finance Bank | Online Banking and Financial Servi",
+    "jana.bank.in": "site title: Jana Small Finance Bank | Online Banking and Financial Servi"
+   }
+  },
+  {
+   "key": "utkarsh",
+   "name": "Utkarsh Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "utkarsh.bank",
+    "utkarsh.bank.in"
+   ],
+   "words": [
+    "utkarsh"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "utkarsh.bank": "site title: Utkarsh Small Finance Bank - Online Personal, Business & NRI",
+    "utkarsh.bank.in": "site title: Utkarsh Small Finance Bank - Online Personal, Business & NRI"
+   }
+  },
+  {
+   "key": "esafbank",
+   "name": "ESAF Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "esafbank.com",
+    "esaf.bank.in"
+   ],
+   "words": [
+    "esaf"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "esafbank.com": "blocks automated checks; Tranco rank 485,513",
+    "esaf.bank.in": "under .bank.in, which only RBI-authorised banks can register (site blocks automated checks)"
+   }
+  },
+  {
+   "key": "capitalbank",
+   "name": "Capital Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "capital.bank.in"
+   ],
+   "words": [
+    "capital small finance"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "capital.bank.in": "site title: Capital Small Finance Bank - India's Trusted Small Finance B"
+   }
+  },
+  {
+   "key": "suryodaybank",
+   "name": "Suryoday Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "suryodaybank.com",
+    "suryoday.bank.in"
+   ],
+   "words": [
+    "suryoday"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "suryodaybank.com": "blocks automated checks; Tranco rank 206,892",
+    "suryoday.bank.in": "under .bank.in, which only RBI-authorised banks can register (site blocks automated checks)"
+   }
+  },
+  {
+   "key": "shivalikbank",
+   "name": "Shivalik Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "shivalikbank.com",
+    "shivalik.bank.in"
+   ],
+   "words": [
+    "shivalik"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "shivalikbank.com": "site title: Shivalik Small Finance Bank | Personal Banking and Loans",
+    "shivalik.bank.in": "site title: Shivalik Small Finance Bank | Personal Banking and Loans"
+   }
+  },
+  {
+   "key": "theunitybank",
+   "name": "Unity Small Finance Bank",
+   "category": "Small finance bank",
+   "domains": [
+    "theunitybank.com",
+    "unity.bank.in"
+   ],
+   "words": [
+    "unity small finance"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "theunitybank.com": "site title: Unity Small Finance Bank: Personal & Business Banking | Digi",
+    "unity.bank.in": "site title: Unity Small Finance Bank: Personal & Business Banking | Digi"
+   }
+  },
+  {
+   "key": "sliceit",
+   "name": "slice",
+   "category": "Small finance bank",
+   "domains": [
+    "sliceit.com",
+    "slice.bank.in"
+   ],
+   "words": [
+    "slice small finance"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "sliceit.com": "site title: slice - A new bank, for a new India",
+    "slice.bank.in": "site title: slice - A new bank, for a new India"
+   }
+  },
+  {
+   "key": "saraswatbank",
+   "name": "Saraswat Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "saraswatbank.com",
+    "saraswat.bank.in"
+   ],
+   "words": [
+    "saraswat"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "saraswatbank.com": "site title: Home | Saraswat Cooperative Bank Ltd.",
+    "saraswat.bank.in": "site title: Home | Saraswat Cooperative Bank Ltd."
+   }
+  },
+  {
+   "key": "svcbank",
+   "name": "SVC Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "svcbank.com",
+    "svc.bank.in"
+   ],
+   "words": [
+    "svc bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "svcbank.com": "site title: Home | SVC CO-OPERATIVE BANK LTD",
+    "svc.bank.in": "site title: Home | SVC CO-OPERATIVE BANK LTD"
+   }
+  },
+  {
+   "key": "cosmosbank",
+   "name": "Cosmos Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "cosmosbank.com",
+    "cosmos.bank.in"
+   ],
+   "words": [
+    "cosmos bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "cosmosbank.com": "site title: Home | Cosmos Bank",
+    "cosmos.bank.in": "site title: Home | Cosmos Bank"
+   }
+  },
+  {
+   "key": "tjsbbank",
+   "name": "TJSB Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "tjsbbank.co.in",
+    "tjsb.bank.in"
+   ],
+   "words": [
+    "tjsb"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "tjsbbank.co.in": "site title: TJSB Bank - Personal Banking & Netbanking Services",
+    "tjsb.bank.in": "site title: TJSB Bank - Personal Banking & Netbanking Services"
+   }
+  },
+  {
+   "key": "abhyudayabank",
+   "name": "Abhyudaya Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "abhyudayabank.co.in",
+    "abhyudaya.bank.in"
+   ],
+   "words": [
+    "abhyudaya"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "abhyudayabank.co.in": "redirects to abhyudaya.bank.in",
+    "abhyudaya.bank.in": "redirect target of abhyudayabank.co.in"
+   }
+  },
+  {
+   "key": "bharatbank",
+   "name": "Bharat Co-operative Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "bharatbank.com",
+    "bharatbank.bank.in"
+   ],
+   "words": [
+    "bharat bank",
+    "bharat co-operative"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bharatbank.com": "site title: Bharat Co-operative Bank (Mumbai) Ltd.",
+    "bharatbank.bank.in": "site title: Bharat Co-operative Bank (Mumbai) Ltd."
+   }
+  },
+  {
+   "key": "nkgsb",
+   "name": "NKGSB Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "nkgsb-bank.com",
+    "nkgsb.bank.in"
+   ],
+   "words": [
+    "nkgsb"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "nkgsb-bank.com": "site title: Home | NKGSB Co-operative Bank Ltd.",
+    "nkgsb.bank.in": "site title: Home | NKGSB Co-operative Bank Ltd."
+   }
+  },
+  {
+   "key": "odishascb",
+   "name": "Odisha State Co-operative Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "odishascb.com",
+    "odishascb.bank.in"
+   ],
+   "words": [
+    "odisha state co-operative",
+    "oscb"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "odishascb.com": "site title: ::OSCB",
+    "odishascb.bank.in": "site title: ::OSCB"
+   }
+  },
+  {
+   "key": "odishabank",
+   "name": "Odisha Grameen Bank",
+   "category": "Cooperative bank",
+   "domains": [
+    "odishabank.in",
+    "odishabank.bank.in"
+   ],
+   "words": [
+    "odisha grameen",
+    "odisha gramya"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "odishabank.in": "site title: Odisha Grameen Bank",
+    "odishabank.bank.in": "site title: Odisha Grameen Bank"
+   }
+  },
+  {
+   "key": "airtelbank",
+   "name": "Airtel Payments Bank",
+   "category": "Payments bank",
+   "domains": [
+    "airtel.in",
+    "airtelbank.com",
+    "airtelpayments.bank.in"
+   ],
+   "words": [
+    "airtel payments bank"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "airtel.in": "site title: Airtel: Wi-Fi, Postpaid, Prepaid, DTH, Bank & Business",
+    "airtelbank.com": "site title: Airtel Payments Bank: The Safe Second Account for Daily Tran",
+    "airtelpayments.bank.in": "site title: Airtel Payments Bank: The Safe Second Account for Daily Tran"
+   }
+  },
+  {
+   "key": "ippbonline",
+   "name": "India Post Payments Bank",
+   "category": "Payments bank",
+   "domains": [
+    "ippbonline.bank.in"
+   ],
+   "words": [
+    "ippb",
+    "india post payments"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "ippbonline.bank.in": "site title: Personal - India Post Payments Bank"
+   }
+  },
+  {
+   "key": "finobank",
+   "name": "Fino Payments Bank",
+   "category": "Payments bank",
+   "domains": [
+    "finobank.com",
+    "fino.bank.in"
+   ],
+   "words": [
+    "fino"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "finobank.com": "blocks automated checks; Tranco rank 659,158",
+    "fino.bank.in": "site title: Individual"
+   }
+  },
+  {
+   "key": "jiopaymentsbank",
+   "name": "Jio Payments Bank",
+   "category": "Payments bank",
+   "domains": [
+    "jiopayments.bank.in"
+   ],
+   "words": [
+    "jio payments"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "jiopayments.bank.in": "site title: Jio Payments Bank – Seamless 24/7 digital banking"
+   }
+  },
+  {
+   "key": "nsdlbank",
+   "name": "NSDL Payments Bank",
+   "category": "Payments bank",
+   "domains": [
+    "nsdlbank.com",
+    "nsdlpayments.bank.in"
+   ],
+   "words": [
+    "nsdl payments"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "nsdlbank.com": "redirects to nsdlpayments.bank.in",
+    "nsdlpayments.bank.in": "redirect target of nsdlbank.com"
+   }
+  },
+  {
+   "key": "mobikwik",
+   "name": "MobiKwik",
+   "category": "Payments and wallets",
+   "domains": [
+    "mobikwik.com"
+   ],
+   "words": [
+    "mobikwik"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "mobikwik.com": "site title: Online Mobile & DTH Recharge, Bill Payments, Easy Recharge"
+   }
+  },
+  {
+   "key": "freecharge",
+   "name": "Freecharge",
+   "category": "Payments and wallets",
+   "domains": [
+    "freecharge.in",
+    "freecharge.com"
+   ],
+   "words": [
+    "freecharge"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "freecharge.in": "redirect target of freecharge.com",
+    "freecharge.com": "redirects to freecharge.in"
+   }
+  },
+  {
+   "key": "amazonpay",
+   "name": "Amazon Pay",
+   "category": "Payments and wallets",
+   "domains": [
+    "amazonpay.in"
+   ],
+   "words": [
+    "amazon pay"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "amazonpay.in": "site title: Amazon Pay"
+   }
+  },
+  {
+   "key": "cred",
+   "name": "CRED",
+   "category": "Payments and wallets",
+   "domains": [
+    "cred.club"
+   ],
+   "words": [],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "cred.club": "site title: CRED. not everyone gets it."
+   }
+  },
+  {
+   "key": "razorpay",
+   "name": "Razorpay",
+   "category": "Payments and wallets",
+   "domains": [
+    "razorpay.com"
+   ],
+   "words": [
+    "razorpay"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "razorpay.com": "site title: Razorpay - Best Payment Solution for Online Payments India"
+   }
+  },
+  {
+   "key": "payu",
+   "name": "PayU",
+   "category": "Payments and wallets",
+   "domains": [
+    "payu.in"
+   ],
+   "words": [
+    "payu"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "payu.in": "site title: PayU - Best Digital Payment Solutions for Businesses | 150+ "
+   }
+  },
+  {
+   "key": "bharatpe",
+   "name": "BharatPe",
+   "category": "Payments and wallets",
+   "domains": [
+    "bharatpe.com"
+   ],
+   "words": [
+    "bharatpe"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bharatpe.com": "site title: Home - BharatPe"
+   }
+  },
+  {
+   "key": "navi",
+   "name": "Navi",
+   "category": "Payments and wallets",
+   "domains": [
+    "navi.com"
+   ],
+   "words": [],
+   "weak": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "navi.com": "site title: Navi: UPI, Loans, Insurance, Investments, Bills & Recharges"
+   }
+  },
+  {
+   "key": "bajajfinserv",
+   "name": "Bajaj Finserv",
+   "category": "Payments and wallets",
+   "domains": [
+    "bajajfinserv.in"
+   ],
+   "words": [
+    "bajaj finserv",
+    "bajaj finance"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bajajfinserv.in": "site title: Bajaj Finserv: Loans, Cards, Insurance, Investments, Payment"
+   }
+  },
+  {
+   "key": "sbicard",
+   "name": "SBI Card",
+   "category": "Payments and wallets",
+   "domains": [
+    "sbicard.com"
+   ],
+   "words": [
+    "sbi card"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "sbicard.com": "site title: SBI Credit Card Online - SBI Credit Card Services | SBI Card"
+   }
+  },
+  {
+   "key": "hdfclife",
+   "name": "HDFC Life",
+   "category": "Payments and wallets",
+   "domains": [
+    "hdfclife.com"
+   ],
+   "words": [
+    "hdfc life"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "hdfclife.com": "site title: Life Insurance: Buy Best Life Insurance from HDFC Life Onlin"
+   }
+  },
+  {
+   "key": "hdfcergo",
+   "name": "HDFC ERGO",
+   "category": "Payments and wallets",
+   "domains": [
+    "hdfcergo.com"
+   ],
+   "words": [
+    "hdfc ergo"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "hdfcergo.com": "site title: HDFC ERGO General Insurance - Buy Insurance Policies Online"
+   }
+  },
+  {
+   "key": "iciciprulife",
+   "name": "ICICI Prudential Life",
+   "category": "Payments and wallets",
+   "domains": [
+    "iciciprulife.com",
+    "icicilife.com"
+   ],
+   "words": [
+    "icici prudential"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "iciciprulife.com": "blocks automated checks; Tranco rank 56,738",
+    "icicilife.com": "blocks automated checks; Tranco rank 475,410"
+   }
+  },
+  {
+   "key": "icicilombard",
+   "name": "ICICI Lombard",
+   "category": "Payments and wallets",
+   "domains": [
+    "icicilombard.com"
+   ],
+   "words": [
+    "icici lombard"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "icicilombard.com": "blocks automated checks; Tranco rank 45,893"
+   }
+  },
+  {
+   "key": "sbilife",
+   "name": "SBI Life",
+   "category": "Payments and wallets",
+   "domains": [
+    "sbilife.co.in"
+   ],
+   "words": [
+    "sbi life"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "sbilife.co.in": "site title: SBI Life Insurance - Best Life Insurance Plans in India"
+   }
+  },
+  {
+   "key": "sbimf",
+   "name": "SBI Mutual Fund",
+   "category": "Payments and wallets",
+   "domains": [
+    "sbimf.com"
+   ],
+   "words": [
+    "sbi mutual fund"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "sbimf.com": "site title: SBI Mutual Fund - Mutual Fund India, Mutual Funds Investment"
+   }
+  },
+  {
+   "key": "policybazaar",
+   "name": "Policybazaar",
+   "category": "Payments and wallets",
+   "domains": [
+    "policybazaar.com"
+   ],
+   "words": [
+    "policybazaar"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "policybazaar.com": "site title: Insurance - Compare & Buy Insurance Plans - Health, Term, Li"
+   }
+  },
+  {
+   "key": "licindia",
+   "name": "LIC",
+   "category": "Payments and wallets",
+   "domains": [
+    "licindia.in"
+   ],
+   "words": [
+    "lic of india",
+    "life insurance corporation"
+   ],
+   "weak_aliases": [
+    "lic"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "licindia.in": "site title: Home | Life Insurance Corporation of India | Official websit"
+   }
+  },
+  {
+   "key": "zerodha",
+   "name": "Zerodha",
+   "category": "Brokers and trading",
+   "domains": [
+    "zerodha.com"
+   ],
+   "words": [
+    "zerodha"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "zerodha.com": "site title: Zerodha: Online brokerage platform for stock trading & inves"
+   }
+  },
+  {
+   "key": "groww",
+   "name": "Groww",
+   "category": "Brokers and trading",
+   "domains": [
+    "groww.in"
+   ],
+   "words": [
+    "groww"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "groww.in": "blocks automated checks; Tranco rank 5,892"
+   }
+  },
+  {
+   "key": "upstox",
+   "name": "Upstox",
+   "category": "Brokers and trading",
+   "domains": [
+    "upstox.com"
+   ],
+   "words": [
+    "upstox"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "upstox.com": "site title: Trade & Invest: Online Share Market Trading App in India | U"
+   }
+  },
+  {
+   "key": "angelone",
+   "name": "Angel One",
+   "category": "Brokers and trading",
+   "domains": [
+    "angelone.in"
+   ],
+   "words": [
+    "angel one"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "angelone.in": "site title: Online Trading & Stock Broking in India | Angel One"
+   }
+  },
+  {
+   "key": "icicidirect",
+   "name": "ICICI Direct",
+   "category": "Brokers and trading",
+   "domains": [
+    "icicidirect.com"
+   ],
+   "words": [
+    "icici direct"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "icicidirect.com": "site title: ICICI Direct - Online Share Trading in India At Low Brokerag"
+   }
+  },
+  {
+   "key": "hdfcsec",
+   "name": "HDFC Securities",
+   "category": "Brokers and trading",
+   "domains": [
+    "hdfcsec.com"
+   ],
+   "words": [
+    "hdfc securities"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "hdfcsec.com": "site title: Open Trading Account Online & Invest in Stock, MF, IPO & Mor"
+   }
+  },
+  {
+   "key": "kotaksecurities",
+   "name": "Kotak Securities",
+   "category": "Brokers and trading",
+   "domains": [
+    "kotaksecurities.com",
+    "kotakneo.com"
+   ],
+   "words": [
+    "kotak securities"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "kotaksecurities.com": "site title: Online Stock Trading & Investment Platform - Kotak Neo",
+    "kotakneo.com": "redirect target of kotaksecurities.com"
+   }
+  },
+  {
+   "key": "motilaloswal",
+   "name": "Motilal Oswal",
+   "category": "Brokers and trading",
+   "domains": [
+    "motilaloswal.com"
+   ],
+   "words": [
+    "motilal oswal"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "motilaloswal.com": "site title: Online Share Trading and Investment Broker in India - Motila"
+   }
+  },
+  {
+   "key": "nseindia",
+   "name": "NSE",
+   "category": "Brokers and trading",
+   "domains": [
+    "nseindia.com"
+   ],
+   "words": [
+    "nse india"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "nseindia.com": "blocks automated checks; Tranco rank 6,224"
+   }
+  },
+  {
+   "key": "bseindia",
+   "name": "BSE",
+   "category": "Brokers and trading",
+   "domains": [
+    "bseindia.com"
+   ],
+   "words": [
+    "bse india"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bseindia.com": "site title: LIVE Stock/Share Market | Indian Stock/Share Market LIVE | B"
+   }
+  },
+  {
+   "key": "sebi",
+   "name": "SEBI",
+   "category": "Brokers and trading",
+   "domains": [
+    "sebi.gov.in"
+   ],
+   "words": [
+    "sebi"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "sebi.gov.in": "site title: Securities and Exchange Board of India"
+   }
+  },
+  {
+   "key": "camsonline",
+   "name": "CAMS",
+   "category": "Brokers and trading",
+   "domains": [
+    "camsonline.com"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "camsonline.com": "site title: Mutual Funds India Hub for Investors & Distributors | CAMS O"
+   }
+  },
+  {
+   "key": "coindcx",
+   "name": "CoinDCX",
+   "category": "Crypto exchange",
+   "domains": [
+    "coindcx.com"
+   ],
+   "words": [
+    "coindcx"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "coindcx.com": "site title: Trade Bitcoin & Buy Crypto with CoinDCX Crypto App"
+   }
+  },
+  {
+   "key": "wazirx",
+   "name": "WazirX",
+   "category": "Crypto exchange",
+   "domains": [
+    "wazirx.com"
+   ],
+   "words": [
+    "wazirx"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "wazirx.com": "site title: Buy Bitcoin, Cryptocurrency at India’s Largest Exchange | Tr"
+   }
+  },
+  {
+   "key": "coinswitch",
+   "name": "CoinSwitch",
+   "category": "Crypto exchange",
+   "domains": [
+    "coinswitch.co"
+   ],
+   "words": [
+    "coinswitch"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "coinswitch.co": "site title: CoinSwitch – India's Top Crypto Exchange | Buy & Trade Crypt"
+   }
+  },
+  {
+   "key": "zebpay",
+   "name": "ZebPay",
+   "category": "Crypto exchange",
+   "domains": [
+    "zebpay.com"
+   ],
+   "words": [
+    "zebpay"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "zebpay.com": "site title: Buy, Sell & Trade Crypto Coins Globally | Crypto Exchange | "
+   }
+  },
+  {
+   "key": "binance",
+   "name": "Binance",
+   "category": "Crypto exchange",
+   "domains": [
+    "binance.com"
+   ],
+   "words": [
+    "binance"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "binance.com": "blocks automated checks; Tranco rank 718"
+   }
+  },
+  {
+   "key": "coinbase",
+   "name": "Coinbase",
+   "category": "Crypto exchange",
+   "domains": [
+    "coinbase.com"
+   ],
+   "words": [
+    "coinbase"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "coinbase.com": "site title: Coinbase - Buy & Sell Bitcoin, Ethereum, and more with trust"
+   }
+  },
+  {
+   "key": "digilocker",
+   "name": "DigiLocker",
+   "category": "Government",
+   "domains": [
+    "digilocker.gov.in"
+   ],
+   "words": [
+    "digilocker"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "digilocker.gov.in": "site title: DigiLocker | Access, Share & Verify Digital Documents"
+   }
+  },
+  {
+   "key": "umang",
+   "name": "UMANG",
+   "category": "Government",
+   "domains": [
+    "umang.gov.in"
+   ],
+   "words": [],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "umang.gov.in": "site title: UMANG"
+   }
+  },
+  {
+   "key": "passportindia",
+   "name": "Passport Seva",
+   "category": "Government",
+   "domains": [
+    "passportindia.gov.in"
+   ],
+   "words": [
+    "passport seva"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "passportindia.gov.in": "site title: Passport Seva"
+   }
+  },
+  {
+   "key": "parivahan",
+   "name": "Parivahan",
+   "category": "Government",
+   "domains": [
+    "parivahan.gov.in"
+   ],
+   "words": [
+    "parivahan",
+    "vahan",
+    "sarathi"
+   ],
+   "aliases": [
+    "mparivahan"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "parivahan.gov.in": "site title: Welcome! | Parivahansewa"
+   }
+  },
+  {
+   "key": "echallan",
+   "name": "e-Challan",
+   "category": "Government",
+   "domains": [
+    "echallan.parivahan.gov.in"
+   ],
+   "words": [
+    "e-challan",
+    "echallan",
+    "e challan"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "echallan.parivahan.gov.in": "site title: Ministry of Road Transport and Highways"
+   }
+  },
+  {
+   "key": "fastag",
+   "name": "FASTag",
+   "category": "Government",
+   "domains": [
+    "ihmcl.co.in",
+    "fastag.ihmcl.com"
+   ],
+   "words": [
+    "fastag"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "ihmcl.co.in": "site title: IHMCL – Indian Highways Management Company Limited",
+    "fastag.ihmcl.com": "site title: Login || Toll Plaza"
+   }
+  },
+  {
+   "key": "gst",
+   "name": "GST",
+   "category": "Government",
+   "domains": [
+    "gst.gov.in"
+   ],
+   "words": [
+    "gst portal",
+    "gstn"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "gst.gov.in": "blocks automated checks; Tranco rank 1,376"
+   }
+  },
+  {
+   "key": "cowin",
+   "name": "CoWIN",
+   "category": "Government",
+   "domains": [
+    "cowin.gov.in"
+   ],
+   "words": [
+    "cowin"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "cowin.gov.in": "site title: CoWIN"
+   }
+  },
+  {
+   "key": "rbi",
+   "name": "RBI",
+   "category": "Government",
+   "domains": [
+    "rbi.org.in"
+   ],
+   "words": [
+    "rbi",
+    "reserve bank"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "rbi.org.in": "site title: Home | Official website of Reserve Bank of India"
+   }
+  },
+  {
+   "key": "indiagov",
+   "name": "India.gov.in",
+   "category": "Government",
+   "domains": [
+    "india.gov.in"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "india.gov.in": "site title: Home | National Portal of India"
+   }
+  },
+  {
+   "key": "pmkisan",
+   "name": "PM-Kisan",
+   "category": "Government",
+   "domains": [
+    "pmkisan.gov.in"
+   ],
+   "words": [
+    "pm kisan",
+    "pm-kisan"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "pmkisan.gov.in": "site title: PM-Kisan Samman Nidhi"
+   }
+  },
+  {
+   "key": "pmjay",
+   "name": "Ayushman Bharat",
+   "category": "Government",
+   "domains": [
+    "pmjay.gov.in"
+   ],
+   "words": [
+    "ayushman"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "pmjay.gov.in": "blocks automated checks; Tranco rank 137,789"
+   }
+  },
+  {
+   "key": "eshram",
+   "name": "e-Shram",
+   "category": "Government",
+   "domains": [
+    "eshram.gov.in"
+   ],
+   "words": [
+    "e-shram",
+    "eshram"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "eshram.gov.in": "site title: Home | e-Shram"
+   }
+  },
+  {
+   "key": "cybercrime",
+   "name": "Cyber Crime Portal",
+   "category": "Government",
+   "domains": [
+    "cybercrime.gov.in"
+   ],
+   "words": [],
+   "checked": "2026-11-06",
+   "proof": {
+    "cybercrime.gov.in": "site title: Cybercrime Portal"
+   }
+  },
+  {
+   "key": "sancharsaathi",
+   "name": "Sanchar Saathi",
+   "category": "Government",
+   "domains": [
+    "sancharsaathi.gov.in"
+   ],
+   "words": [
+    "sanchar saathi"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "sancharsaathi.gov.in": "site title: Sanchar Saathi"
+   }
+  },
+  {
+   "key": "trai",
+   "name": "TRAI",
+   "category": "Government",
+   "domains": [
+    "trai.gov.in"
+   ],
+   "words": [
+    "trai"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "trai.gov.in": "site title: Home | Telecom Regulatory Authority of India | Government of"
+   }
+  },
+  {
+   "key": "proteantech",
+   "name": "Protean (PAN)",
+   "category": "Government",
+   "domains": [
+    "protean-tinpan.com",
+    "proteantech.in"
+   ],
+   "words": [
+    "protean",
+    "tin-nsdl"
+   ],
+   "aliases": [
+    "protean"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "protean-tinpan.com": "site title: Protean PAN Services - PAN Card Application & Issuance",
+    "proteantech.in": "site title: Best in Building Digital Public Infrastructure | Protean eGo"
+   }
+  },
+  {
+   "key": "utiitsl",
+   "name": "UTIITSL (PAN)",
+   "category": "Government",
+   "domains": [
+    "utiitsl.com"
+   ],
+   "words": [
+    "utiitsl"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "utiitsl.com": "site title: UTIITSL | PAN Card Application | Change/Correction in PAN | "
+   }
+  },
+  {
+   "key": "mcagov",
+   "name": "MCA",
+   "category": "Government",
+   "domains": [
+    "mca.gov.in"
+   ],
+   "words": [],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "mca.gov.in": "blocks automated checks; Tranco rank 6,569"
+   }
+  },
+  {
+   "key": "nhai",
+   "name": "NHAI",
+   "category": "Government",
+   "domains": [
+    "nhai.gov.in"
+   ],
+   "words": [
+    "nhai"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "nhai.gov.in": "site title: National Highways Authority of India, Ministry of Road Trans"
+   }
+  },
+  {
+   "key": "myvi",
+   "name": "Vi",
+   "category": "Telecom",
+   "domains": [
+    "myvi.in"
+   ],
+   "words": [
+    "vodafone idea"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "myvi.in": "site title: Vi (Vodafone Idea) - Vi Max Postpaid | Prepaid | Vi Games & "
+   }
+  },
+  {
+   "key": "bsnl",
+   "name": "BSNL",
+   "category": "Telecom",
+   "domains": [
+    "bsnl.co.in"
+   ],
+   "words": [
+    "bsnl"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "bsnl.co.in": "site title: BSNL Portal — India's Trusted Telecom Network"
+   }
+  },
+  {
+   "key": "tpcodl",
+   "name": "TP Central Odisha (TPCODL)",
+   "category": "Electricity and gas",
+   "domains": [
+    "tpcentralodisha.com"
+   ],
+   "words": [
+    "tpcodl"
+   ],
+   "aliases": [
+    "tpcentralodisha"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "tpcentralodisha.com": "site title: TP Central Odisha Distribution Limited (TPCODL)"
+   }
+  },
+  {
+   "key": "tpsodl",
+   "name": "TP Southern Odisha (TPSODL)",
+   "category": "Electricity and gas",
+   "domains": [
+    "tpsouthernodisha.com",
+    "tpsodl.com"
+   ],
+   "words": [
+    "tpsodl"
+   ],
+   "aliases": [
+    "tpsouthernodisha"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "tpsouthernodisha.com": "site title: TP Southern Odisha Distribution Limited (TPSODL)",
+    "tpsodl.com": "site title: TP Southern Odisha Distribution Limited (TPSODL)"
+   }
+  },
+  {
+   "key": "tpwodl",
+   "name": "TP Western Odisha (TPWODL)",
+   "category": "Electricity and gas",
+   "domains": [
+    "tpwesternodisha.com",
+    "tpwodl.com"
+   ],
+   "words": [
+    "tpwodl"
+   ],
+   "aliases": [
+    "tpwesternodisha"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "tpwesternodisha.com": "site title: TP Western Odisha Distribution Limited (TPWODL)",
+    "tpwodl.com": "site title: TP Western Odisha Distribution Limited (TPWODL)"
+   }
+  },
+  {
+   "key": "tpnodl",
+   "name": "TP Northern Odisha (TPNODL)",
+   "category": "Electricity and gas",
+   "domains": [
+    "tpnorthernodisha.com",
+    "tpnodl.com"
+   ],
+   "words": [
+    "tpnodl"
+   ],
+   "aliases": [
+    "tpnorthernodisha"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "tpnorthernodisha.com": "site title: TP Northern Odisha Distribution Limited (TPNODL)",
+    "tpnodl.com": "site title: TP Northern Odisha Distribution Limited (TPNODL)"
+   }
+  },
+  {
+   "key": "tatapower",
+   "name": "Tata Power",
+   "category": "Electricity and gas",
+   "domains": [
+    "tatapower.com",
+    "tatapower-ddl.com"
+   ],
+   "words": [
+    "tata power"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "tatapower.com": "site title: Largest Power & Energy Company in India | Tata Power",
+    "tatapower-ddl.com": "site title: Welcome to Tata Power-DDL"
+   }
+  },
+  {
+   "key": "adanielectricity",
+   "name": "Adani Electricity",
+   "category": "Electricity and gas",
+   "domains": [
+    "adanielectricity.com"
+   ],
+   "words": [
+    "adani electricity"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "adanielectricity.com": "site title: India's Largest Private Power Company | Adani Electricity"
+   }
+  },
+  {
+   "key": "mahadiscom",
+   "name": "MSEDCL (Mahavitaran)",
+   "category": "Electricity and gas",
+   "domains": [
+    "mahadiscom.in"
+   ],
+   "words": [
+    "msedcl",
+    "mahadiscom",
+    "mahavitaran"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "mahadiscom.in": "site title: मुख्य पृष्ठ - Maharashtra State Electricity Distribution Co."
+   }
+  },
+  {
+   "key": "bescom",
+   "name": "BESCOM",
+   "category": "Electricity and gas",
+   "domains": [
+    "bescom.karnataka.gov.in"
+   ],
+   "words": [
+    "bescom"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "bescom.karnataka.gov.in": "site title: ಬೆಂಗಳೂರು ವಿದ್ಯುತ್ ಸರಬರಾಜು ಕಂಪನಿ ನಿಯಮಿತ  - Index"
+   }
+  },
+  {
+   "key": "tnebltd",
+   "name": "TNEB",
+   "category": "Electricity and gas",
+   "domains": [
+    "tnebltd.gov.in",
+    "tnpdcl.org",
+    "tangedco.org"
+   ],
+   "words": [
+    "tneb",
+    "tangedco"
+   ],
+   "aliases": [
+    "tneb",
+    "tangedco"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "tnebltd.gov.in": "site title: TANGEDCO - Redirection",
+    "tnpdcl.org": "site title: Home - த.நா.மி.ப.க",
+    "tangedco.org": "site title: Home - த.நா.மி.உ.ப.க"
+   }
+  },
+  {
+   "key": "kseb",
+   "name": "KSEB",
+   "category": "Electricity and gas",
+   "domains": [
+    "kseb.in"
+   ],
+   "words": [
+    "kseb"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "kseb.in": "site title: Kerala State Electricity Board Limited-KSEB"
+   }
+  },
+  {
+   "key": "bsesdelhi",
+   "name": "BSES",
+   "category": "Electricity and gas",
+   "domains": [
+    "bsesdelhi.com"
+   ],
+   "words": [
+    "bses"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bsesdelhi.com": "site title: BSES"
+   }
+  },
+  {
+   "key": "uppcl",
+   "name": "UPPCL",
+   "category": "Electricity and gas",
+   "domains": [
+    "uppcl.org"
+   ],
+   "words": [
+    "uppcl"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "uppcl.org": "blocks automated checks; Tranco rank 9,626"
+   }
+  },
+  {
+   "key": "indane",
+   "name": "Indane",
+   "category": "Electricity and gas",
+   "domains": [
+    "indianoil.in",
+    "iocl.com"
+   ],
+   "words": [
+    "indane"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "indianoil.in": "blocks automated checks; Tranco rank 9,422",
+    "iocl.com": "blocks automated checks; Tranco rank 40,787"
+   }
+  },
+  {
+   "key": "hpgas",
+   "name": "HP Gas",
+   "category": "Electricity and gas",
+   "domains": [
+    "myhpgas.in",
+    "hindustanpetroleum.com",
+    "hpgas.com"
+   ],
+   "words": [
+    "hp gas"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "myhpgas.in": "blocks automated checks; Tranco rank 23,440",
+    "hindustanpetroleum.com": "site title: Hindustan Petroleum Corporation Ltd. | Oil and Gas Company i",
+    "hpgas.com": "site title: Hindustan Petroleum Corporation Ltd. | Oil and Gas Company i"
+   }
+  },
+  {
+   "key": "bharatgas",
+   "name": "Bharatgas",
+   "category": "Electricity and gas",
+   "domains": [
+    "ebharatgas.com",
+    "bharatpetroleum.in"
+   ],
+   "words": [
+    "bharatgas"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "ebharatgas.com": "site title: Bharatgas (Cook Food Serve Love) - Home",
+    "bharatpetroleum.in": "site title: Official Website of Bharat Petroleum Corporation limited, In"
+   }
+  },
+  {
+   "key": "nykaa",
+   "name": "Nykaa",
+   "category": "Shopping and delivery",
+   "domains": [
+    "nykaa.com"
+   ],
+   "words": [
+    "nykaa"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "nykaa.com": "blocks automated checks; Tranco rank 6,586"
+   }
+  },
+  {
+   "key": "ajio",
+   "name": "AJIO",
+   "category": "Shopping and delivery",
+   "domains": [
+    "ajio.com"
+   ],
+   "words": [
+    "ajio"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "ajio.com": "blocks automated checks; Tranco rank 6,350"
+   }
+  },
+  {
+   "key": "snapdeal",
+   "name": "Snapdeal",
+   "category": "Shopping and delivery",
+   "domains": [
+    "snapdeal.com"
+   ],
+   "words": [
+    "snapdeal"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "snapdeal.com": "site title: Online shopping for Men, Women & Kids Fashion, Home Decor, l"
+   }
+  },
+  {
+   "key": "tatacliq",
+   "name": "Tata CLiQ",
+   "category": "Shopping and delivery",
+   "domains": [
+    "tatacliq.com"
+   ],
+   "words": [
+    "tata cliq"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "tatacliq.com": "blocks automated checks; Tranco rank 36,293"
+   }
+  },
+  {
+   "key": "jiomart",
+   "name": "JioMart",
+   "category": "Shopping and delivery",
+   "domains": [
+    "jiomart.com"
+   ],
+   "words": [
+    "jiomart"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "jiomart.com": "site title: JioMart: India's online shopping"
+   }
+  },
+  {
+   "key": "bigbasket",
+   "name": "BigBasket",
+   "category": "Shopping and delivery",
+   "domains": [
+    "bigbasket.com"
+   ],
+   "words": [
+    "bigbasket"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bigbasket.com": "blocks automated checks; Tranco rank 7,058"
+   }
+  },
+  {
+   "key": "blinkit",
+   "name": "Blinkit",
+   "category": "Shopping and delivery",
+   "domains": [
+    "blinkit.com"
+   ],
+   "words": [
+    "blinkit"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "blinkit.com": "blocks automated checks; Tranco rank 5,616"
+   }
+  },
+  {
+   "key": "zeptonow",
+   "name": "Zepto",
+   "category": "Shopping and delivery",
+   "domains": [
+    "zeptonow.com",
+    "zepto.com"
+   ],
+   "words": [
+    "zepto"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "zeptonow.com": "blocks automated checks; Tranco rank 19,030",
+    "zepto.com": "blocks automated checks; Tranco rank 13,790"
+   }
+  },
+  {
+   "key": "delhivery",
+   "name": "Delhivery",
+   "category": "Shopping and delivery",
+   "domains": [
+    "delhivery.com"
+   ],
+   "words": [
+    "delhivery"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "delhivery.com": "site title: Logistics, Parcel Delivery & Supply Chain Solutions - Delhiv"
+   }
+  },
+  {
+   "key": "bluedart",
+   "name": "Blue Dart",
+   "category": "Shopping and delivery",
+   "domains": [
+    "bluedart.com"
+   ],
+   "words": [
+    "blue dart",
+    "bluedart"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "bluedart.com": "site title: Blue Dart Express Limited- India’s Most Innovative and Award"
+   }
+  },
+  {
+   "key": "dtdc",
+   "name": "DTDC",
+   "category": "Shopping and delivery",
+   "domains": [
+    "dtdc.in",
+    "dtdc.com"
+   ],
+   "words": [
+    "dtdc"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "dtdc.in": "redirects to dtdc.com",
+    "dtdc.com": "redirect target of dtdc.in"
+   }
+  },
+  {
+   "key": "ecomexpress",
+   "name": "Ecom Express",
+   "category": "Shopping and delivery",
+   "domains": [
+    "ecomexpress.in"
+   ],
+   "words": [
+    "ecom express"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "ecomexpress.in": "site title: Delhivery X Ecom Express"
+   }
+  },
+  {
+   "key": "xpressbees",
+   "name": "XpressBees",
+   "category": "Shopping and delivery",
+   "domains": [
+    "xpressbees.com"
+   ],
+   "words": [
+    "xpressbees"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "xpressbees.com": "blocks automated checks; Tranco rank 78,874"
+   }
+  },
+  {
+   "key": "fedex",
+   "name": "FedEx",
+   "category": "Shopping and delivery",
+   "domains": [
+    "fedex.com"
+   ],
+   "words": [
+    "fedex"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "fedex.com": "site title: FedEx"
+   }
+  },
+  {
+   "key": "dhl",
+   "name": "DHL",
+   "category": "Shopping and delivery",
+   "domains": [
+    "dhl.com"
+   ],
+   "words": [
+    "dhl"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "dhl.com": "blocks automated checks; Tranco rank 1,890"
+   }
+  },
+  {
+   "key": "makemytrip",
+   "name": "MakeMyTrip",
+   "category": "Shopping and delivery",
+   "domains": [
+    "makemytrip.com"
+   ],
+   "words": [
+    "makemytrip"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "makemytrip.com": "blocks automated checks; Tranco rank 1,304"
+   }
+  },
+  {
+   "key": "olacabs",
+   "name": "Ola",
+   "category": "Shopping and delivery",
+   "domains": [
+    "olacabs.com"
+   ],
+   "words": [
+    "ola cabs"
+   ],
+   "checked": "2026-11-06",
+   "proof": {
+    "olacabs.com": "site title: Book Cabs Nearby at Best Price | Hire Taxi Nearby Online at "
+   }
+  },
+  {
+   "key": "uber",
+   "name": "Uber",
+   "category": "Shopping and delivery",
+   "domains": [
+    "uber.com"
+   ],
+   "words": [
+    "uber"
+   ],
+   "no_typo": true,
+   "checked": "2026-11-06",
+   "proof": {
+    "uber.com": "site title: Earn Money by Driving or Get a Ride Now | Uber India"
+   }
+  }
+ ]
+}
