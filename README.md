@@ -197,6 +197,14 @@ In the first tab, open **Compare page** and upload saved copies of the suspiciou
 
 The trained model (`model.joblib`) is included in the repo, so you do not need to train anything. If it is missing, the app still works with the rule-based score only.
 
+### Run the tests
+
+```bat
+python test_rules.py
+```
+
+Checks the expected verdict for each test link, prints a table and a summary, and exits with code 1 if anything fails.
+
 ### Retrain the model (optional)
 
 ```bat
@@ -218,6 +226,7 @@ The first run downloads PhiUSIIL into `data/` (needs internet once, about 15 MB)
 | `features.py` | Shared brand list, trusted and free-hosting lists, scam words, look-alike logic and ML features |
 | `lookalikes.py` | Generates synthetic look-alikes into `data/synthetic_pairs.csv` |
 | `evaluate.py` | Tests detection per attack type, false alarms and speed; writes `evaluation.json` |
+| `test_rules.py` | Regression tests: the expected verdict for each test link |
 | `popular_domains.txt` | The top popular sites, most popular first |
 | `build_popular.py` | Rebuilds `popular_domains.txt` from `data/tranco.csv` and prints what it removed |
 | `train.py` | Downloads data, trains and evaluates the model |

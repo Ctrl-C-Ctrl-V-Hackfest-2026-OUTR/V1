@@ -31,6 +31,7 @@ Judged on closeness/probability scores, detection speed, ease of use and flexibl
 - `evidence.py`: `similarity_evidence()` gives nearest genuine domain, closeness, edit distance, attack type and exact edits. `align()` is the letter-by-letter alignment.
 - `outputs.py`: `check_many()` scores a whole list in one model call, plus `to_csv`, `to_json`, `to_xlsx`. Exports show cells starting with `= + - @` as text, so a spreadsheet can't run them.
 - `kavach_cli.py`: `python kavach_cli.py input.csv|input.txt --format csv|json|xlsx --out file`.
+- `test_rules.py`: `python test_rules.py` checks (input, expected verdict) cases in `LINK_CASES`, prints a table and exits with code 1 on any failure. Add new suites to `SUITES` (the file says how to add SMS messages). Must not import `app.py`.
 - `lookalikes.py`: `python lookalikes.py` writes `data/synthetic_pairs.csv` (gitignored; genuine, lookalike, attack_type).
 - `evaluate.py`: `python evaluate.py` prints detection per attack type, false alarms and speed, and writes `evaluation.json` (committed; the How it works tab shows it).
 - `page_compare.py`: optional saved-page comparison. Reads uploads only, fetches nothing, never changes the risk score.
@@ -128,4 +129,5 @@ Added on the `ml-model` branch. The rule-based score above is kept; the model ad
 
 - Keep code simple and well commented. Add a new file only when one is really needed.
 - Test before saying something works.
+- Run python test_rules.py after every change.
 - Give Windows commands (CMD or PowerShell), not Linux/Mac commands.
