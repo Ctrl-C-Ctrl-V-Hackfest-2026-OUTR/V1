@@ -1,48 +1,82 @@
 """
 Kavach - train the machine-learning model.
 
-Run with:  python train.py
- - First run downloads the data into data/ (needs internet once).
+Run with:  python train.py                  (PhiUSIIL data, the default)
+           python train.py --source tranco  (fallback: Tranco + Phishing.Database)
+ - The first run downloads the data into data/ (needs internet once).
  - After that it works fully offline.
 Outputs: model.joblib, feature_importance.csv, metrics.json
+
+The model only ever sees our own 12 features of the host name (features.py), so the app and the
+training use exactly the same logic. We never use PhiUSIIL's ready-made columns, because they
+leak the answer (URLSimilarityIndex alone gets 99.7%) or need the live page.
 """
 import io
 import json
+import random
 import sys
 import urllib.request
 import zipfile
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
                              precision_score, recall_score)
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.tree import DecisionTreeClassifier
 
-from features import FEATURE_NAMES, LEGIT_DOMAINS, extract, extract_features
+from features import FEATURE_NAMES, LEGIT_DOMAINS, POPULAR_SET, extract, extract_features, parse
 
 HERE = Path(__file__).parent
 DATA = HERE / "data"
+PHIUSIIL_CSV = DATA / "PhiUSIIL_Phishing_URL_Dataset.csv"
 TRANCO_CSV = DATA / "tranco.csv"                 # rank,domain  (top 20,000)
 PHISH_TXT = DATA / "phishing-domains-ACTIVE.txt"  # one domain per line
 
+PHIUSIIL_PAGE = "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset"
+PHIUSIIL_ZIP = "https://archive.ics.uci.edu/static/public/967/phiusiil+phishing+url+dataset.zip"
 TRANCO_URL = "https://tranco-list.eu/top-1m.csv.zip"
 PHISH_URL = ("https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/"
              "master/phishing-domains-ACTIVE.txt")
 N_PER_CLASS = 20_000
 SEED = 42
+ML_TRUST = 0.70     # the same threshold app.py uses before ML can raise a score
+LEAK_LIMIT = 0.98   # a single feature this accurate means the data gives the answer away
+
+# Used to check the labels point the right way after the flip (0 = legit, 1 = phishing)
+KNOWN_HOSTS = {"columbia.edu": 0, "euronews.com": 0, "levelup.com": 0,
+               "paypal.com.login.prosto-vsem.ru": 1, "metamask-usaz.godaddysites.com": 1}
 
 
 def download(url: str) -> bytes:
     """Download a file and return its bytes."""
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Kavach training)"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=180) as resp:
         return resp.read()
 
 
-def get_data():
-    """Download the two datasets once; skip if they are already in data/."""
+def get_phiusiil() -> bool:
+    """Download PhiUSIIL once. Returns False if it is missing and could not be downloaded."""
+    if PHIUSIIL_CSV.exists():
+        return True
+    DATA.mkdir(exist_ok=True)
+    try:
+        print("Downloading the PhiUSIIL dataset (about 15 MB)...")
+        with zipfile.ZipFile(io.BytesIO(download(PHIUSIIL_ZIP))) as z:
+            PHIUSIIL_CSV.write_bytes(z.read(PHIUSIIL_CSV.name))
+        return True
+    except Exception as err:  # no internet, blocked, URL moved...
+        print(f"\nDOWNLOAD FAILED: {err}")
+        print(f"Download it by hand from {PHIUSIIL_PAGE}")
+        print(f"and save {PHIUSIIL_CSV.name} in the data/ folder, then re-run.\n")
+        return False
+
+
+def get_tranco_data():
+    """Download the two fallback datasets once; skip if they are already in data/."""
     DATA.mkdir(exist_ok=True)
     try:
         if not TRANCO_CSV.exists():
@@ -71,57 +105,154 @@ def registered(host: str) -> str:
     return f"{p.domain}.{p.suffix}" if p.suffix else p.domain
 
 
-def load_domains():
-    # Legit: top 20,000 Tranco domains, minus the official brand domains that
-    # the app already marks Safe (otherwise "exact brand match" would leak the answer).
-    legit = [line.split(",", 1)[1].strip().lower()
-             for line in TRANCO_CSV.read_text(encoding="utf-8").splitlines() if "," in line]
-    legit_set = set(legit)
-    legit = sorted({d for d in legit if d not in LEGIT_DOMAINS})
+def bare_host(url: str) -> str:
+    """'https://www.paytm.com/login' -> 'paytm.com'"""
+    return parse(url)[1].removeprefix("www.")
 
-    # Phishing: random sample from the feed, de-duplicated, minus anything on the legit list.
+
+def load_phiusiil():
+    """Returns (hosts, labels, registered domains), one row per host name."""
+    df = pd.read_csv(PHIUSIIL_CSV, encoding="utf-8-sig", usecols=["URL", "label"])
+    print(f"PhiUSIIL rows: {len(df)}")
+
+    # PhiUSIIL uses 1 = LEGITIMATE, 0 = PHISHING. We use 1 = phishing, so flip it.
+    df["phishing"] = 1 - df["label"]
+    df["host"] = df["URL"].astype(str).map(bare_host)
+    df["reg"] = df["host"].map(registered)
+
+    # Stop right here if the labels point the wrong way: the model would learn the exact opposite
+    known = df[df["host"].isin(KNOWN_HOSTS)].drop_duplicates("host")
+    wrong = [h for h, y in zip(known["host"], known["phishing"]) if KNOWN_HOSTS[h] != y]
+    print("Label check on known hosts:", dict(zip(known["host"], known["phishing"])))
+    if wrong or len(known) != len(KNOWN_HOSTS):
+        sys.exit(f"LABEL CHECK FAILED for {wrong or 'missing hosts'}: stopping before training.")
+
+    # Official brand domains are Safe in the app, so the model never sees them. Their PhiUSIIL
+    # rows are redirects like google.com/url?q=evil, and our features don't look at the path.
+    df = df[~df["reg"].isin(LEGIT_DOMAINS)]
+
+    # Features only see the host, so one row per host. Drop hosts with both labels.
+    hosts = df.groupby("host").agg(phishing=("phishing", "max"), labels=("phishing", "nunique"),
+                                   reg=("reg", "first")).reset_index()
+    print(f"Unique hosts: {len(hosts)}   dropped because they have both labels: {(hosts['labels'] > 1).sum()}")
+    hosts = hosts[hosts["labels"] == 1]
+    return hosts["host"].tolist(), hosts["phishing"].tolist(), hosts["reg"].tolist()
+
+
+def read_tranco():
+    return [line.split(",", 1)[1].strip().lower()
+            for line in TRANCO_CSV.read_text(encoding="utf-8").splitlines() if "," in line]
+
+
+def read_feed():
     raw = [l.strip().lower() for l in PHISH_TXT.read_text(encoding="utf-8", errors="ignore").splitlines()
            if l.strip() and not l.startswith("#")]
-    phish = sorted(set(raw))
+    return sorted(set(raw))
+
+
+def load_tranco():
+    """Fallback data. Returns (hosts, labels, registered domains)."""
+    # Legit: top 20,000 Tranco domains, minus the official brand domains that
+    # the app already marks Safe (otherwise "exact brand match" would leak the answer).
+    tranco = read_tranco()
+    legit_set = set(tranco)
+    legit = sorted({d for d in tranco if d not in LEGIT_DOMAINS})
+
+    # Phishing: random sample from the feed, de-duplicated, minus anything on the legit list.
+    phish = read_feed()
     # Drop phishing hosts whose registered domain (domain + suffix) is in the Tranco top 20,000,
     # e.g. x.github.io, y.blogspot.com, z.weebly.com. These are abused free-hosting sites and
     # would teach the model "subdomain = phishing" instead of look-alike detection.
     kept = [d for d in phish if registered(d) not in legit_set and registered(d) not in LEGIT_DOMAINS]
     print(f"Phishing hosts in feed: {len(phish)}   dropped (registered domain in Tranco top "
           f"{N_PER_CLASS}): {len(phish) - len(kept)}")
-    print("  free-hosting domains in the Tranco list:",
-          {d: d in legit_set for d in ("github.io", "blogspot.com", "weebly.com")})
     phish = pd.Series(kept).sample(n=min(N_PER_CLASS, len(kept)), random_state=SEED).tolist()
-    return legit, phish
+    hosts = legit + phish
+    return hosts, [0] * len(legit) + [1] * len(phish), [registered(h) for h in hosts]
+
+
+def leakage_check(X_train, y_train, X_test, y_test) -> dict:
+    """How accurate is each feature on its own? Near 100% means the data gives the answer away."""
+    scores = {c: DecisionTreeClassifier(max_depth=1, random_state=SEED)
+              .fit(X_train[[c]], y_train).score(X_test[[c]], y_test) for c in FEATURE_NAMES}
+    print("\nLeakage check: accuracy of each feature alone (more than "
+          f"{LEAK_LIMIT:.0%} would be a leak)")
+    for name, acc in sorted(scores.items(), key=lambda kv: -kv[1]):
+        print(f"  {acc:.3f}  {name}")
+    leaks = [c for c, acc in scores.items() if acc >= LEAK_LIMIT]
+    if leaks:
+        sys.exit(f"LEAK: {leaks} give near-100% accuracy alone. Remove them before training.")
+    return scores
+
+
+def calibration_table(y_test, proba) -> list:
+    """Are 80% predictions right about 80% of the time? Compare in 10% wide groups."""
+    y_test = np.asarray(y_test)
+    rows = []
+    for low in range(0, 100, 10):
+        mask = (proba * 100 >= low) & ((proba * 100 < low + 10) | (low == 90))
+        if mask.sum():
+            rows.append({"range": f"{low}-{low + 10}%", "count": int(mask.sum()),
+                         "predicted": float(proba[mask].mean()), "actual": float(y_test[mask].mean())})
+    return rows
+
+
+def cross_check(model) -> dict:
+    """Try the model on the other data source, which it did not train on. A rough real-world check."""
+    if not (TRANCO_CSV.exists() and PHISH_TXT.exists()):
+        return {}
+    random.seed(SEED)
+    real = random.sample([d for d in read_tranco() if d not in LEGIT_DOMAINS], 5000)
+    feed = [h for h in random.sample(read_feed(), 8000) if registered(h) not in POPULAR_SET][:5000]
+    real_p = model.predict_proba(pd.DataFrame([extract_features(d) for d in real], columns=FEATURE_NAMES))[:, 1]
+    feed_p = model.predict_proba(pd.DataFrame([extract_features(d) for d in feed], columns=FEATURE_NAMES))[:, 1]
+    return {"tranco_flagged": float(np.mean(real_p >= ML_TRUST)), "feed_caught": float(np.mean(feed_p >= ML_TRUST)),
+            "n_tranco": len(real), "n_feed": len(feed)}
 
 
 def main():
-    get_data()
-    legit, phish = load_domains()
-    print(f"Legit domains: {len(legit)}   Phishing domains: {len(phish)}")
+    source = "tranco" if "--source" in sys.argv and "tranco" in sys.argv else "phiusiil"
+    if source == "phiusiil" and not get_phiusiil():
+        print("Falling back to Tranco + Phishing.Database.")
+        source = "tranco"
+    if source == "tranco":
+        get_tranco_data()
+        hosts, y, groups = load_tranco()
+    else:
+        hosts, y, groups = load_phiusiil()
+    y = np.array(y)
+    print(f"Source: {source}   Legit: {(y == 0).sum()}   Phishing: {(y == 1).sum()}")
 
     print("Extracting features...")
-    domains = legit + phish
-    y = [0] * len(legit) + [1] * len(phish)
-    X = pd.DataFrame([extract_features(d) for d in domains], columns=FEATURE_NAMES)
+    X = pd.DataFrame([extract_features(h) for h in hosts], columns=FEATURE_NAMES)
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, stratify=y, random_state=SEED)
+    # 80/20 split that keeps every host of one site on the same side, so the test set
+    # really is made of sites the model has never seen.
+    train_idx, test_idx = next(StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=SEED)
+                               .split(X, y, groups))
+    X_train, X_test, y_train, y_test = X.iloc[train_idx], X.iloc[test_idx], y[train_idx], y[test_idx]
 
-    print(f"Training RandomForest on {len(X_train)} rows, testing on {len(X_test)} rows...")
+    single = leakage_check(X_train, y_train, X_test, y_test)
+
+    print(f"\nTraining RandomForest on {len(X_train)} rows, testing on {len(X_test)} rows...")
     model = RandomForestClassifier(n_estimators=100, max_depth=14, min_samples_leaf=2,
                                    random_state=SEED, n_jobs=-1)
     model.fit(X_train, y_train)
     pred = model.predict(X_test)
+    proba = model.predict_proba(X_test)[:, 1]
 
     metrics = {
+        "source": source,
         "accuracy": accuracy_score(y_test, pred),
         "precision": precision_score(y_test, pred),
         "recall": recall_score(y_test, pred),
         "f1": f1_score(y_test, pred),
         "confusion_matrix": confusion_matrix(y_test, pred).tolist(),  # [[TN, FP], [FN, TP]]
         "n_train": len(X_train), "n_test": len(X_test),
-        "n_legit": len(legit), "n_phishing": len(phish),
+        "n_legit": int((y == 0).sum()), "n_phishing": int((y == 1).sum()),
+        "best_single_feature": max(single.values()),
+        "calibration": calibration_table(y_test, proba),
+        "cross_check": cross_check(model) if source == "phiusiil" else {},
     }
     print("\n=== Test-set results ===")
     for k in ("accuracy", "precision", "recall", "f1"):
@@ -131,6 +262,16 @@ def main():
     print(f"                 pred legit   pred phishing")
     print(f"real legit       {tn:>10}   {fp:>13}")
     print(f"real phishing    {fn:>10}   {tp:>13}")
+
+    print("\nCalibration: are 80% predictions right about 80% of the time?")
+    print("  range      count   predicted   actually phishing")
+    for row in metrics["calibration"]:
+        print(f"  {row['range']:<9} {row['count']:>6}   {row['predicted']:>8.1%}   {row['actual']:>8.1%}")
+
+    if metrics["cross_check"]:
+        c = metrics["cross_check"]
+        print(f"\nOther data source, ML >= {ML_TRUST:.0%}: real Tranco sites flagged {c['tranco_flagged']:.1%}, "
+              f"phishing-feed hosts caught {c['feed_caught']:.1%}")
 
     imp = (pd.DataFrame({"feature": FEATURE_NAMES, "importance": model.feature_importances_})
            .sort_values("importance", ascending=False).head(10))

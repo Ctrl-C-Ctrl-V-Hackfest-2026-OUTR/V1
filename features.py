@@ -268,12 +268,18 @@ def _entropy(text: str) -> float:
 
 def extract_features(url: str) -> list:
     """Turn one domain/link into a list of numbers, ordered like FEATURE_NAMES."""
-    parts, host = parse(url)
+    parts, _ = parse(url)
     name = parts.domain
+
+    # Ignore a leading "www." so example.com and www.example.com score the same. This also stops
+    # a data leak: every legit PhiUSIIL row starts https://www. but only 41% of phishing rows do,
+    # so a model that sees "www" learns "no www = phishing" and flags every real site typed without it.
+    subdomain = "" if parts.subdomain == "www" else parts.subdomain.removeprefix("www.")
+    host = ".".join(p for p in [subdomain, parts.domain, parts.suffix] if p)
 
     letters = [c for c in name if c.isalpha()]
     vowel_ratio = sum(c in "aeiou" for c in letters) / len(letters) if letters else 0.0
-    subdomain_count = len(parts.subdomain.split(".")) if parts.subdomain else 0
+    subdomain_count = len(subdomain.split(".")) if subdomain else 0
 
     _, _, best_sim, is_homoglyph = brand_match(name)
 
@@ -288,6 +294,6 @@ def extract_features(url: str) -> list:
         int(parts.suffix in SUSPICIOUS_TLDS),               # suspicious_tld
         sum(w in host for w in SUSPICIOUS_WORDS),           # scam_words
         best_sim,                                           # brand_similarity
-        int(subdomain_brand(parts.subdomain) is not None),  # brand_in_subdomain
+        int(subdomain_brand(subdomain) is not None),        # brand_in_subdomain
         int(is_homoglyph),                                  # homoglyph_match
     ]

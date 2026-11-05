@@ -382,8 +382,8 @@ with tab3:
                          "one typo from a brand or top site (yutube → youtube), brand names used in the "
                          "name or subdomain, risky endings like .xyz, scam words and odd structure. "
                          "Result: a risk score from 0 to 100."),
-        ("2 · 🤖 Machine learning", "A Random Forest trained on 20,000 popular sites and 20,000 real "
-                                   "phishing hosts looks at 12 patterns in how the domain is built "
+        ("2 · 🤖 Machine learning", "A Random Forest trained on the PhiUSIIL dataset (about 135,000 real "
+                                   "sites and 84,000 phishing hosts) looks at 12 patterns in how the domain is built "
                                    "and gives the % chance that it is phishing. Free-hosting sites "
                                    "never get the subdomain shortcut, because anyone can publish there: "
                                    "their subdomains always get all the checks and this model."),
