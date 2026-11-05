@@ -95,7 +95,7 @@ def analyze(url: str) -> dict:
             reasons.append(f"One typo away from '{typo_brand}': " + ", ".join(edits_between(clean, typo_brand)))
         elif best_sim >= 80:
             score += 45
-            reasons.append(f"Looks like '{best_brand}' ({best_sim:.0f}% similar) but is not the real site")
+            reasons.append(f"Looks like '{best_brand}' but is not the real site")
         else:
             # Only +45 (Suspicious): popular-site names cause more false alarms than our brands
             popular_target = popular_lookalike(name)

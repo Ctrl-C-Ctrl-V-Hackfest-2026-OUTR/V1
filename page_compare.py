@@ -9,7 +9,6 @@ import io
 import re
 from html.parser import HTMLParser
 
-import imagehash
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 from rapidfuzz import fuzz
@@ -116,6 +115,10 @@ def _structural_similarity(a: np.ndarray, b: np.ndarray, block: int = 8) -> floa
 
 def compare_images(suspicious: bytes, genuine: bytes) -> dict:
     """Visual similarity % of two screenshots. Raises ValueError if a file isn't a readable image."""
+    try:
+        import imagehash  # only needed here, so the rest of the app works without it
+    except ImportError as err:
+        raise ValueError("Screenshot comparison needs one more package. Run: pip install -r requirements.txt") from err
     try:
         a, b = [Image.open(io.BytesIO(data)).convert("RGB") for data in (suspicious, genuine)]
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as err:

@@ -15,7 +15,11 @@ It works fully offline: no WHOIS, no online lookups, no API calls. Everything ru
 
 ## How it works
 
-Every domain goes through two checks that are combined into one verdict.
+Every domain goes through two checks that are combined into one verdict, and you always see three numbers:
+
+- **Closeness:** how close the name is to the nearest genuine site, 0-100%, from Damerau-Levenshtein distance after fixing fake letters. A real name copied whole inside a longer one counts as 100%. The app also shows the attack type and the exact edits, such as `'rn' replaces 'm' at position 5`, with the changed letters highlighted.
+- **Phishing probability:** the ML model's % chance that it is phishing.
+- **Final risk score:** rules plus ML, from 0 to 100. This decides the verdict.
 
 ### 1. Rules (risk score 0-100)
 
@@ -32,10 +36,11 @@ Everything else gets a risk score. Of the look-alike checks (fake letters, one t
 |---|---|
 | `@` hiding the real address (`https://user@evil.com`), where the browser goes to the part after the `@` | +40 |
 | The same, when the hidden part names a brand, official domain or `.bank.in` address (`sbi.bank.in@evil.com`) | +60 |
-| Fake letters that spell a brand (`0` for `o`, `rn` for `m`, `vv` for `w`, ...) | +70 |
+| Fake letters that spell a brand (`0` for `o`, `rn` for `m`, `vv` for `w`, Cyrillic letters, `xn--` names, ...) | +70 |
 | One typo from a brand with 5+ letters (`yutube.com`). A short list of everyday words such as `tomato` skips this check | +60 |
 | Name looks like a known brand (80%+ similar; a brand hidden inside the name counts as 90%) | +45 |
-| One typo from a top-2,000 site (`rediit.com`) | +45 |
+| One typo from a top-2,000 site, or fake letters that spell one (`rediit.com`) | +45 |
+| A top-200 site's name on another ending, or with only scam words added (`reddit.xyz`, `reddit-login.com`) | +45 |
 | Brand name used in a subdomain (e.g. `paytm.verify-account.click`) | +45 |
 | Risky ending (`.xyz`, `.top`, `.click`, `.icu`, `.info`, ...) | +15 |
 | Scam words (`login`, `verify`, `kyc`, `update`, `reward`, ...) | +10 each, max +20 |
@@ -63,7 +68,12 @@ An `@` trick never gets an instant Safe. If the browser really ends up on a trus
 
 A scikit-learn **RandomForest** looks at 12 features of the domain (length, hyphens, digits, dots, number of subdomains, vowel ratio, character randomness, risky ending, scam words, similarity to a known brand, brand in subdomain, fake-letter match) and returns the probability that the domain is phishing.
 
-It was trained on **19,966 popular sites** (Tranco top list) and **20,000 real phishing hosts** (Phishing.Database). Free-hosting sites such as `github.io` and `blogspot.com` were removed from the phishing side so the model does not just learn "has a subdomain = phishing".
+It was trained on the [PhiUSIIL Phishing URL dataset](https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset): **134,784 real sites** and **84,236 phishing hosts** after removing duplicates (PhiUSIIL labels 1 = legitimate, so `train.py` flips them). Tranco + Phishing.Database remain as a fallback (`python train.py --source tranco`).
+
+Two data problems were found and handled:
+
+- PhiUSIIL's own columns are not used. `URLSimilarityIndex` alone gets 99.7% accuracy, so it gives the answer away, and others need the live page.
+- Every legit row starts `https://www.`, but only 41% of phishing rows do. A model that sees this flags every real site typed without `www` (100% of Tranco sites in our test), so the features ignore a leading `www.`.
 
 The model is skipped for everything that is Safe straight away, including subdomains of popular sites (`en.wikipedia.org`, `login.yahoo.com`). Subdomains of free-hosting sites always go to the model, because anyone can publish there (`random.weebly.com`).
 
@@ -80,29 +90,77 @@ Examples:
 
 | Domain | Rule score | ML probability | Final | Verdict |
 |---|---|---|---|---|
-| `paytrn.com` | 70 | 17% | 70 | Phishing |
-| `yutube.com` | 60 | 14% | 60 | Phishing |
-| `sbi.bank.in@evil.com` | 60 | 5% | 60 | Phishing |
-| `hdfc-bank-login.com` | 75 | 90% | 82 | Phishing |
-| `sbi-kyc-update-now.top` | 90 | 99% | 95 | Phishing |
-| `amazon.security-check.icu` | 60 | 100% | 80 | Phishing |
-| `rediit.com` | 45 | 10% | 45 | Suspicious |
-| `sbikyc.net` | 55 | 17% | 55 | Suspicious |
+| `paytrn.com` | 70 | 59% | 70 | Phishing |
+| `yutube.com` | 60 | 52% | 60 | Phishing |
+| `sbi.bank.in@evil.com` | 60 | 12% | 60 | Phishing |
+| `hdfc-bank-login.com` | 75 | 89% | 82 | Phishing |
+| `sbi-kyc-update-now.top` | 90 | 94% | 92 | Phishing |
+| `amazon.security-check.icu` | 60 | 99% | 79 | Phishing |
+| `rediit.com` | 45 | 18% | 45 | Suspicious |
+| `sbikyc.net` | 55 | 65% | 55 | Suspicious |
 | `google.com` | 0 | n/a | 0 | Safe |
 | `sbi.bank.in` | 0 | n/a | 0 | Safe |
 | `accounts.spotify.com` | 0 | n/a | 0 | Safe |
 
 ## Model metrics
 
-Measured on a held-out test set of **7,994 domains** the model never saw during training (80/20 split):
+Measured on **43,805 hosts** held out from training (80/20 split that keeps all hosts of one site together, so these are sites the model never saw):
 
 | Accuracy | Precision | Recall | F1 |
 |---|---|---|---|
-| 85.3% | 90.4% | 79.0% | 84.3% |
+| 85.3% | 93.5% | 66.4% | 77.6% |
 
-The top features are domain length, number of subdomains, character randomness, digits and dots.
+Confusion matrix: 26,176 legit correct, 781 false alarms, 5,664 phishing missed, 11,184 phishing caught. The top features are number of subdomains, digits, risky ending, length and dots.
 
-**Honest caveat:** much of the model's signal comes from how a domain is built (length, subdomains), which partly reflects differences between the two data sources rather than pure look-alike detection. The rules do the look-alike work; the model adds a second opinion.
+Calibration: when the model gives a percentage, how often is it really phishing?
+
+| Model said | Domains | Actually phishing |
+|---|---|---|
+| 0-10% | 1,348 | 8% |
+| 10-20% | 25,885 | 16% |
+| 20-30% | 2,613 | 25% |
+| 30-40% | 1,363 | 34% |
+| 40-50% | 631 | 42% |
+| 50-60% | 352 | 53% |
+| 60-70% | 434 | 61% |
+| 70-80% | 813 | 73% |
+| 80-90% | 1,253 | 88% |
+| 90-100% | 9,113 | 99% |
+
+On the other data source, which it did not train on, at ML 70% or more: 2.4% of real Tranco sites flagged, 65.1% of Phishing.Database hosts caught.
+
+**Honest caveats:**
+
+- Calibration was measured at PhiUSIIL's mix of 38% phishing. Real traffic has far less phishing, so real-world precision will be lower.
+- Much of the model's signal comes from how a domain is built (subdomains, digits, length), which partly reflects differences between the data sources rather than pure look-alike detection. The rules do the look-alike work; the model adds a second opinion.
+
+## Tests on synthetic look-alikes
+
+`lookalikes.py` generates fake domains of ten attack types from our brand list and the top 200 sites, plus real sites as negatives. Caught means Suspicious or Phishing.
+
+| Attack type | Brands: rules | Brands: final | Top 200: rules | Top 200: final |
+|---|---|---|---|---|
+| missing_letter | 100% | 100% | 88% | 89% |
+| extra_letter | 100% | 100% | 84% | 85% |
+| swapped_letters | 96% | 96% | 90% | 90% |
+| keyboard_neighbour | 93% | 93% | 84% | 84% |
+| homoglyph | 98% | 98% | 91% | 92% |
+| cyrillic | 100% | 100% | 93% | 93% |
+| hyphen | 100% | 100% | 90% | 91% |
+| combosquat | 99% | 99% | 76% | 86% |
+| tld_swap | 100% | 100% | 77% | 86% |
+| subdomain_abuse | 100% | 100% | 100% | 100% |
+
+- **False alarms:** 5.8% of 2,000 real sites flagged (0.4% as Phishing), with the popular-site shortcut turned off so they can't pass automatically.
+- **Known gap:** one-typo fakes of 3-4 letter brands (`bsi.co.in`, `joi.com`) are left out on purpose, because nearly any short word is one edit from them.
+- **Speed:** 1.1 ms per domain as a list (881 domains/second), 6.4 ms when checked one at a time.
+
+To re-run these:
+
+```bat
+python lookalikes.py
+python evaluate.py
+```
 
 ## Run it locally
 
@@ -119,7 +177,23 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app opens at http://localhost:8501. Use the first tab to check a single link. Use the CSV tab to check a whole list: upload a CSV with a column named `domain` (see `sample_domains.csv`) and download the results.
+The app opens at http://localhost:8501. Use the first tab to check a single link, and copy or download the result as JSON. Use the second tab to check a whole list: upload a CSV with a column named `domain` (see `sample_domains.csv`) or a text file with one domain per line, then download the results as CSV, JSON or Excel.
+
+### Command-line tool
+
+Check a list without opening the app. Works with a `.csv` that has a `domain` column, or a `.txt` with one domain per line:
+
+```bat
+python kavach_cli.py sample_domains.csv
+python kavach_cli.py sample_domains.csv --format json --out results.json
+python kavach_cli.py domains.txt --format xlsx --out results.xlsx
+```
+
+Each export has these columns: domain, verdict, final score, ML probability, nearest genuine site, closeness %, attack type, evidence, reasons, rule score and what decided it.
+
+### Compare a page (optional)
+
+In the first tab, open **Compare page** and upload saved copies of the suspicious and genuine pages. Saved HTML gives a content similarity % (title, form fields, visible text with TF-IDF cosine, image file names), and screenshots give a visual similarity % (perceptual hash and structural similarity). A close copy on a different domain is shown as strong phishing evidence. Nothing is fetched from the internet, uploaded files are only read, and this doesn't change the risk score.
 
 The trained model (`model.joblib`) is included in the repo, so you do not need to train anything. If it is missing, the app still works with the rule-based score only.
 
@@ -129,19 +203,27 @@ The trained model (`model.joblib`) is included in the repo, so you do not need t
 python train.py
 ```
 
-The first run downloads the training data into `data/` (needs internet once, about 20 MB). After that it works offline. It prints accuracy, precision, recall, F1 and the confusion matrix, then rewrites `model.joblib`, `feature_importance.csv` and `metrics.json`.
+The first run downloads PhiUSIIL into `data/` (needs internet once, about 15 MB). After that it works offline. If the download fails, it tells you how to get the file by hand. It prints a leakage check, accuracy, precision, recall, F1, the confusion matrix and calibration, then rewrites `model.joblib`, `feature_importance.csv` and `metrics.json`.
 
 ## Project files
 
 | File | What it does |
 |---|---|
-| `app.py` | Streamlit app: rule-based score, ML blend and the user interface |
+| `app.py` | Streamlit app: the user interface |
+| `detector.py` | Detection logic: rule-based score and ML blend |
+| `evidence.py` | Similarity evidence: closeness, attack type and exact edits |
+| `outputs.py` | Fast list checking and CSV, JSON and Excel export |
+| `kavach_cli.py` | Command-line tool |
+| `page_compare.py` | Optional comparison of saved pages and screenshots |
 | `features.py` | Shared brand list, trusted and free-hosting lists, scam words, look-alike logic and ML features |
+| `lookalikes.py` | Generates synthetic look-alikes into `data/synthetic_pairs.csv` |
+| `evaluate.py` | Tests detection per attack type, false alarms and speed; writes `evaluation.json` |
 | `popular_domains.txt` | The top popular sites, most popular first |
 | `build_popular.py` | Rebuilds `popular_domains.txt` from `data/tranco.csv` and prints what it removed |
 | `train.py` | Downloads data, trains and evaluates the model |
 | `model.joblib` | Trained RandomForest |
-| `metrics.json`, `feature_importance.csv` | Test metrics and top features from the last training run |
+| `metrics.json`, `feature_importance.csv` | Test metrics, calibration and top features from the last training run |
+| `evaluation.json` | Results of the last `evaluate.py` run |
 | `sample_domains.csv` | 10 test domains, a mix of real and fake |
 | `requirements.txt` | Pinned package versions |
 

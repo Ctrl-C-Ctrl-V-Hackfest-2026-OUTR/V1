@@ -14,6 +14,7 @@ import plotly.express as px
 import streamlit as st
 
 from detector import explain, full_analysis, load_model
+from evidence import ATTACK_LABELS
 from outputs import EXPORTERS, FORMATS, check_many, flat_row, read_domains, speed, to_json
 from page_compare import compare_html, compare_images, conclusion
 
@@ -58,7 +59,8 @@ st.markdown("""<style>
 .k-ev-name {font-family: ui-monospace, Consolas, monospace; font-size: 1.2rem; overflow-wrap: anywhere;}
 .k-same {color: #22C55E;}
 .k-changed {color: #EF4444; font-weight: 700; background: #EF444422; border-radius: 3px;}
-.k-missing {color: #9CA3AF; text-decoration: line-through;}
+.k-missing {color: #D1D5DB; background: #6B728055; border-radius: 3px; padding: 0 1px;
+            text-decoration: line-through; text-decoration-thickness: 2px;}
 .k-ev-edits {margin: 12px 0 0 0; padding-left: 18px; font-size: .9rem;}
 </style>""", unsafe_allow_html=True)
 
@@ -277,8 +279,11 @@ with tab2:
             # on_click="ignore": downloading doesn't need to rerun the app
             for col, fmt in zip(st.columns(3), EXPORTERS):
                 mime, filename = FORMATS[fmt]
-                col.download_button(f"Download {fmt.upper()}", EXPORTERS[fmt](rows), filename, mime,
-                                    on_click="ignore", width="stretch")
+                try:
+                    col.download_button(f"Download {fmt.upper()}", EXPORTERS[fmt](rows), filename, mime,
+                                        on_click="ignore", width="stretch")
+                except ImportError:  # Excel export needs openpyxl
+                    col.caption(f"{fmt.upper()} needs one more package. Run: pip install -r requirements.txt")
 
 # ----- Tab 3: how it works -----
 with tab3:
@@ -286,8 +291,8 @@ with tab3:
         ("1 · 📏 Rules", "Official domains, verified .bank.in banks, the top 20,000 sites and their "
                          "subdomains are Safe straight away. Everything else is checked for an @ hiding "
                          "the real address (sbi.bank.in@evil.com), fake letters (paytrn → paytm), names "
-                         "one typo from a brand or top site (yutube → youtube), brand names used in the "
-                         "name or subdomain, risky endings like .xyz, scam words and odd structure. "
+                         "one typo from a brand or top site (yutube → youtube), brand or top-site names "
+                         "used in the name or subdomain, risky endings like .xyz, scam words and odd structure. "
                          "Result: a risk score from 0 to 100."),
         ("2 · 🤖 Machine learning", "A Random Forest trained on the PhiUSIIL dataset (about 135,000 real "
                                    "sites and 84,000 phishing hosts) looks at 12 patterns in how the domain is built "
@@ -302,6 +307,17 @@ with tab3:
     for col, (title, text) in zip(st.columns(3), steps):
         col.markdown(f'<div class="k-step"><h4>{title}</h4>{text}</div>', unsafe_allow_html=True)
 
+    st.subheader("The three scores", anchor=False)
+    scores = [
+        ("Closeness", "How close the name is to the nearest genuine site (0-100%), from edit distance "
+                      "after fixing fake letters. The box next to it shows exactly which letters changed."),
+        ("Phishing probability", "The ML model's % chance that the domain is phishing, judged only from "
+                                 "how the address is built. Not needed when the site is known to be real."),
+        ("Final risk score", "Rules plus ML, from 0 to 100. This decides the verdict."),
+    ]
+    for col, (title, text) in zip(st.columns(3), scores):
+        col.markdown(f'<div class="k-step"><h4>{title}</h4>{text}</div>', unsafe_allow_html=True)
+
     st.subheader("Model performance", anchor=False)
     metrics_file = HERE / "metrics.json"
     importance_file = HERE / "feature_importance.csv"
@@ -312,8 +328,20 @@ with tab3:
         b.metric("Precision", f"{m['precision']:.1%}")
         c.metric("Recall", f"{m['recall']:.1%}")
         d.metric("F1", f"{m['f1']:.1%}")
-        st.caption(f"Tested on {m['n_test']:,} domains the model had never seen. The rules do the "
+        st.markdown(f"**Data:** the PhiUSIIL phishing URL dataset, {m['n_legit']:,} real sites and "
+                    f"{m['n_phishing']:,} phishing hosts. The model sees only our own 12 features of the host "
+                    "name. We don't use PhiUSIIL's ready-made columns: one of them (URLSimilarityIndex) gets "
+                    "99.7% alone, which means it gives the answer away.")
+        st.caption(f"Tested on {m['n_test']:,} hosts from sites the model had never seen. The rules do the "
                    "look-alike detection; the model adds a second opinion on how a domain is built.")
+        if m.get("calibration"):
+            st.markdown("**Can you trust the percentage?** When the model says 80%, is it right about 80% "
+                        "of the time?")
+            st.dataframe(pd.DataFrame([{"Model said": row["range"], "Domains": row["count"],
+                                        "Actually phishing": f"{row['actual']:.0%}"}
+                                       for row in m["calibration"]]), hide_index=True)
+            st.caption("Measured at PhiUSIIL's mix of 38% phishing. Real traffic has far less phishing, "
+                       "so real-world precision will be lower.")
         imp = pd.read_csv(importance_file)
         imp["feature"] = imp["feature"].map(lambda f: FEATURE_LABELS.get(f, f))
         imp = imp.sort_values("importance")
@@ -324,6 +352,30 @@ with tab3:
         st.plotly_chart(style_chart(fig), width="stretch", config=NO_TOOLBAR)
     else:
         st.info("No model stats yet. Run `python train.py` to create them.")
+
+    evaluation_file = HERE / "evaluation.json"
+    if evaluation_file.exists():
+        e = json.loads(evaluation_file.read_text(encoding="utf-8"))
+        st.subheader("Tests on synthetic look-alikes", anchor=False)
+        st.write(f"We generated {e['n_fakes']:,} fake domains of ten attack types, from our brand list and "
+                 f"the top 200 sites. Caught means Suspicious or Phishing.")
+        st.dataframe(pd.DataFrame([{"Attack type": ATTACK_LABELS[row["attack_type"]],
+                                    "Brands caught": f"{row['brands']['final']:.0%}",
+                                    "Top 200 sites caught": f"{row['popular']['final']:.0%}"}
+                                   for row in e["attacks"]]), hide_index=True)
+        fa = e["false_alarms"]
+        st.caption(f"False alarms on {fa['count']:,} real sites, with the popular-site shortcut turned off so "
+                   f"they can't pass automatically: {fa['final']:.1%} flagged, {fa['phishing']:.1%} as Phishing.")
+
+        st.subheader("Speed", anchor=False)
+        s1, s2 = st.columns(2)
+        s1.metric("Time per domain, as a list", f"{e['batch_ms_per_domain']:.1f} ms")
+        s2.metric("Domains per second, as a list", f"{e['batch_per_second']:,.0f}")
+
+    st.subheader("Output formats", anchor=False)
+    st.write("Download results as CSV, JSON or Excel from the list tab, copy a single result as JSON, "
+             "or use the command-line tool:")
+    st.code("python kavach_cli.py domains.csv --format xlsx --out results.xlsx", language="bat")
 
 # ----- Footer -----
 st.markdown('<div class="k-footer">Built by Team Ctrl-C-Ctrl-V · Hackfest 2026</div>',

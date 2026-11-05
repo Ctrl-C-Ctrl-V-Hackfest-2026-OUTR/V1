@@ -49,6 +49,8 @@ def main():
         out.write_bytes(EXPORTERS[fmt](rows))
     except PermissionError:
         sys.exit(f"Error: can't write '{out}'. If it's open in Excel, close it and try again.")
+    except ImportError:
+        sys.exit(f"Error: {fmt} output needs one more package. Run: pip install -r requirements.txt")
 
     counts = Counter(row["verdict"] for row in rows)
     ms, per_second = speed(len(rows), seconds)
