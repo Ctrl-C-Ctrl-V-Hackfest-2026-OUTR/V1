@@ -173,15 +173,16 @@ def structure_facts(url: str) -> str:
     return ", ".join(facts)
 
 
-def full_analysis(url: str, bundle) -> dict:
-    """Everything about one link: the score from score_link() plus the similarity evidence."""
-    r = score_link(url, bundle)
+def full_analysis(url: str, bundle, proba=None) -> dict:
+    """Everything about one link: the score from score_link() plus the similarity evidence.
+    proba is the ML probability (0-1) if it was already worked out, as outputs.check_many() does."""
+    r = score_link(url, bundle, proba)
     r["target"] = lookalike_target(url)
     r["evidence"] = similarity_evidence(url, r["target"])
     return r
 
 
-def score_link(url: str, bundle) -> dict:
+def score_link(url: str, bundle, proba=None) -> dict:
     """Rule score + ML probability -> final score.
 
     If ML probability >= 70%:  final = max(rule score, average of rule score and ML x 100)
@@ -197,9 +198,11 @@ def score_link(url: str, bundle) -> dict:
     if bundle is None or r["note"]:
         return r
 
-    model = bundle["model"]
-    row = pd.DataFrame([extract_features(url)], columns=bundle["features"])
-    p = model.predict_proba(row)[0][list(model.classes_).index(1)]
+    if proba is None:
+        model = bundle["model"]
+        row = pd.DataFrame([extract_features(url)], columns=bundle["features"])
+        proba = model.predict_proba(row)[0][list(model.classes_).index(1)]
+    p = float(proba)
     r["ml_probability"] = round(p * 100, 1)
     if p >= ML_TRUST:
         blended = round((r["rule_score"] + r["ml_probability"]) / 2)

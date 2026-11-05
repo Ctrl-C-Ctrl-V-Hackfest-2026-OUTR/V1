@@ -14,6 +14,7 @@ import plotly.express as px
 import streamlit as st
 
 from detector import explain, full_analysis, load_model
+from outputs import EXPORTERS, FORMATS, check_many, flat_row, read_domains, speed, to_json
 
 HERE = Path(__file__).parent
 
@@ -89,6 +90,12 @@ def evidence_box(ev: dict) -> str:
             f'</div><ul class="k-ev-edits">{edits}</ul></div>')
 
 
+@st.cache_data(max_entries=5, show_spinner="Checking domains...")
+def check_file(data: bytes, filename: str, _bundle) -> tuple:
+    """Check an uploaded file once, so pressing a download button doesn't check it all again."""
+    return check_many(read_domains(data, filename), _bundle)
+
+
 def use_example(domain: str):
     """Button callback: put the example in the input box (the check runs on the rerun)."""
     st.session_state["link_input"] = domain
@@ -159,22 +166,31 @@ with tab1:
                         f'{html.escape(x)}</span>' for x in r["reasons"].split("; "))
         st.markdown(f"<div>{chips}</div>", unsafe_allow_html=True)
 
+        # st.code has a built-in copy button at the top right of the box
+        result_json = to_json(flat_row(r)).decode("utf-8")
+        with st.expander("Copy or download this result as JSON"):
+            st.code(result_json, language="json")
+            st.download_button("Download JSON", result_json, "kavach_result.json", "application/json",
+                               on_click="ignore")
+
 # ----- Tab 2: CSV -----
 with tab2:
-    st.write("Upload a CSV with a column named **domain**.")
-    file = st.file_uploader("CSV file", type="csv")
+    st.write("Upload a CSV with a column named **domain**, or a text file with one domain per line.")
+    file = st.file_uploader("CSV or text file", type=["csv", "txt"])
     if file:
-        df = pd.read_csv(file)
-        if "domain" not in df.columns:
-            st.error("Could not find a column named **domain** in this CSV.")
+        try:
+            rows, seconds = check_file(file.getvalue(), file.name, bundle)
+        except ValueError as err:
+            st.error(str(err))
         else:
-            results = [full_analysis(str(d), bundle) for d in df["domain"]]
-            for row in results:  # the evidence is nested, the table needs plain columns
-                del row["evidence"]
-            results = pd.DataFrame(results)
-            cols = ["url", "domain", "verdict", "score", "rule_score", "ml_probability",
-                    "decided_by", "reasons"]
-            results = results[cols]
+            results = pd.DataFrame(rows)
+
+            # How fast was it?
+            ms, per_second = speed(len(rows), seconds)
+            s1, s2, s3 = st.columns(3)
+            s1.metric("Domains checked", f"{len(rows):,}")
+            s2.metric("Time per domain", f"{ms:.1f} ms")
+            s3.metric("Domains per second", f"{per_second:,.0f}")
 
             # Summary counts
             counts = results["verdict"].value_counts()
@@ -193,13 +209,19 @@ with tab2:
 
             styled = (results.style.map(color_verdict, subset=["verdict"])
                       .format({"ml_probability": "{:.1f}"}, na_rep="n/a"))
+            st.caption("closeness_percent: how close the name is to nearest_genuine. "
+                       "evidence: the exact changes from the genuine name.")
             st.dataframe(styled, width="stretch", hide_index=True)
 
             fig = px.pie(results, names="verdict", hole=0.55, color="verdict",
                          color_discrete_map=COLORS)
             st.plotly_chart(style_chart(fig), width="stretch", config=NO_TOOLBAR)
-            st.download_button("Download results", results.to_csv(index=False),
-                               "kavach_results.csv", "text/csv")
+
+            # on_click="ignore": downloading doesn't need to rerun the app
+            for col, fmt in zip(st.columns(3), EXPORTERS):
+                mime, filename = FORMATS[fmt]
+                col.download_button(f"Download {fmt.upper()}", EXPORTERS[fmt](rows), filename, mime,
+                                    on_click="ignore", width="stretch")
 
 # ----- Tab 3: how it works -----
 with tab3:
