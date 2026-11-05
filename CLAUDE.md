@@ -70,22 +70,46 @@ Rules 1 to 5 are one group: only the first match counts, and the group is skippe
 - The app ignores URL paths. `sites.google.com/view/...` is Safe because `google.com` is official, so that `FREE_HOSTING` entry has no effect.
 - tldextract runs offline: `tldextract.TLDExtract(suffix_list_urls=())`.
 
-UI (polished for the demo; dark theme set in `.streamlit/config.toml`: primary `#22C55E`, background `#0B0F14`, secondary `#111827`, text `#E5E7EB`):
+## UI (redesigned on the `ui-polish` branch)
 
-- Header: shield + "Kavach", tagline "Spot fake bank & shopping sites before you click", and "Works offline · Rules + Machine Learning". Footer: "Built by Team Ctrl-C-Ctrl-V · Hackfest 2026".
-- Four tabs: **Check a link**, **Check a message**, **Check a list (CSV)**, **How it works**.
-- **Check a link:**
-  - Text input plus five example buttons (`paytrn.com`, `sbi-kyc-update-now.top`, `amazon.security-check.icu`, `rediit.com`, `google.com`; `rediit.com` is the amber example). A button callback writes the example into `st.session_state["link_input"]`, and the check runs on the rerun.
-  - Large coloured verdict card (red Phishing 🚨, amber Suspicious ⚠️, green Safe ✅) with the final score and a custom HTML progress bar in the same colour.
-  - "Did you mean the real site: ...?" when the link imitates a brand (look-alike name, fake letters, brand in the subdomain, or brand hidden before an `@`) or a popular site. For brands it uses the first real domain in `BRANDS` (`lookalike_target()` in `detector.py`).
-  - Three metrics (Closeness to <genuine>, Phishing probability (ML), Final risk score), a caption with attack type, edit distance, rule score and what decided it, and a one-line plain-English explanation (`explain()` in `detector.py`).
-  - "Similarity evidence" box when the name imitates a genuine site: genuine vs suspicious side by side (green = same, red = changed/extra, grey strikethrough = missing) and the exact edits.
-  - Reasons shown as small chips, then an expander to copy (`st.code`) or download the result as JSON.
+`app.py` only draws things; every number comes from `detector.py`, `sms.py` and `outputs.py`.
+**All custom CSS lives in `style.css`**, read fresh on each run (not cached, so editing it and
+refreshing the browser shows the change). `.streamlit/config.toml` sets the dark base theme and
+`toolbarMode = "minimal"`; `style.css` hides what is left of Streamlit's chrome.
+
+Design rules, all enforced in `style.css`:
+
+- **Tokens:** every colour and size is a CSS variable on `:root` (`--bg #0B0F14`, `--surface #111827`, `--raised #161E2B`, `--border #1F2937`, `--text #E5E7EB`, `--muted #9CA3AF`, `--brand #22C55E`, plus `--phishing`, `--suspicious`, `--safe`). Spacing is an 8px grid (`--s1`…`--s4`), cards are 16px radius with a 1px border and a soft shadow.
+- **Red, amber and green are only ever used for verdicts**, so they keep their meaning. Reason-chip dots are neutral grey, sized and labelled with the points instead.
+- **A verdict is always an icon and a word**, never colour alone. Contrast measured at 6.6–7.6:1 against the surface behind, above the 4.5:1 target.
+- **Inter** from Google Fonts, with a clear scale (hero 2.6rem/800, section 1.25rem/700, body 1rem, small 0.85rem muted). Scores use `font-variant-numeric: tabular-nums`.
+- Content is centred at 920px. At 640px and below, columns wrap; a column holding a `.k-step` card goes full width (via `:has()`), because a paragraph in a 150px column is unreadable.
+
+Streamlit selectors that matter in 1.66 (they are not the documented BaseWeb ones):
+
+- Tabs are `[role="tablist"]` with `[data-testid="stTab"]` children, styled into a segmented control. The active tab's green bar is `.react-aria-SelectionIndicator`, hidden so the pill behind the label replaces it.
+- Streamlit's own icons are ligatures in a symbol font, so `[data-testid="stIconMaterial"]` must keep `font-family: "Material Symbols Rounded"`. A blanket Inter rule once printed "keyboard_arrow_right" as literal words in every expander label.
+- Equal-height cards in a row need `height: 100%` on the whole wrapper chain (`stVerticalBlock`, `stElementContainer`, `stMarkdown`, `stMarkdownContainer`), not just on the card: those wrappers have no height of their own, so a card's `height: 100%` has nothing to measure against.
+- `st.metric` is kept (rather than hand-built tiles) and restyled as a card, because it stays testable through `AppTest` and keeps its `help` tooltip.
+
+Layout:
+
+- **Hero:** inline SVG shield in brand green + the "Kavach" wordmark, the tagline "Spot fake bank, shopping and government sites before you click", and three pills (Works offline · Explains every verdict · Rules + ML). A very low-opacity radial green glow sits behind it.
+- **Four tabs:** **Check a link**, **Check a message**, **Check a list**, **How it works**.
+- Icons are inline SVG from `ICON_PATHS` in `app.py` via `icon(name, size, colour)`. No emoji in headings; emoji stay inside verdict badges only.
+- **Check a link:** one input with a primary "Check" button on the same row, then five example chips (`paytrn.com`, `sbi-kyc-update-now.top`, `amazon.security-check.icu`, `rediit.com`, `google.com`; `rediit.com` is the amber example). A callback writes into `st.session_state["link_input"]` and the check runs on the rerun.
+  - Verdict card: icon + word, the domain in monospace, and the score as an SVG ring gauge (`score_ring()`, a stroke-dasharray circle, so no chart library is involved).
+  - Three stat tiles: Final risk · Closeness to <genuine> · ML probability. Then a caption with attack type, edit distance, rule score and what decided it, and a one-line explanation (`explain()`).
+  - "Did you mean …?" as a green outline callout with the real domain in monospace.
+  - Evidence card titled "Why Kavach thinks this": genuine vs suspicious side by side (green = same, red = changed/extra, grey strikethrough = missing) and the exact edits.
+  - Reason chips, each with a dot sized by the points that reason added and a `+N` label. `detector.py` returns `reason_points` alongside `reasons` purely for this; it changes no arithmetic.
+  - Empty state (`empty_state()`) before any check, instead of a blank page. `st.spinner("Checking…")` while analysing.
   - "Compare page (optional)" expander: saved HTML gives content similarity %, screenshots give visual similarity %. A close copy on a different domain shows strong phishing evidence. The 70% content and 80% visual cut-offs are judgement calls.
-- **Check a list (CSV):** upload a CSV with a `domain` column or a text file with one domain per line (clear errors for bad files). Shows speed (domains, ms per domain, domains per second), summary counts (phishing / suspicious / safe), a results table with a red/amber/green verdict column, a Plotly donut chart and CSV, JSON and Excel downloads.
-- **Check a message:** text area plus an optional sender box, and five example buttons (`MESSAGE_EXAMPLES` in `app.py`: Bank KYC, Electricity, Lottery, Parcel, Genuine OTP). Shows the verdict card (Scam uses the Phishing colour via `VERDICT_COLORS`), three metrics (Wording score, Worst link score, Links found), the message with risky words marked in red (`highlight_message()`, every piece `html.escape`d), a table of the links found with each verdict and closeness, reason chips, the sender note, a "What to do" box when not Safe, and the result as JSON. An expander checks a CSV of messages.
-- **How it works:** 3 steps (Rules, then ML, then Final verdict), the message section, the three scores, model metrics with data notes and a calibration table, the feature importance chart (`FEATURE_LABELS` in `app.py`), the synthetic test table, speed and output formats.
-- UI rules of thumb: all user-supplied text put into HTML goes through `html.escape`; Plotly charts use `config={"displayModeBar": False}`; use `width="stretch"` (not `use_container_width`, which is deprecated in Streamlit 1.66); headings use `anchor=False`.
+- **Check a message:** five example buttons (`MESSAGE_EXAMPLES`), a text area and an optional sender box. Verdict card (Scam borrows the Phishing colour via `VERDICT_COLORS`), three tiles (Wording score, Worst link score, Links found), the message in a chat bubble with risky words marked (`highlight_message()`, every piece `html.escape`d), a table of the links found with each verdict and closeness, reason chips, the sender note, a calm "What to do" card when not Safe, and the result as JSON. An expander checks a CSV of messages.
+- **Check a list:** drag-and-drop upload card, then three verdict count tiles and three speed tiles, a donut in the verdict colours (transparent background, height 280), a results table with coloured verdict pills, and CSV / JSON / Excel downloads in one row. An empty state before anything is uploaded.
+- **How it works:** three numbered step cards (Rules → ML → Final verdict), the message section, the three scores, model metrics as stat tiles with data notes and a calibration table, the feature-importance chart, the synthetic test table, speed and output formats.
+- **Footer:** "Built by Team Ctrl-C-Ctrl-V · Hackfest 2026 · Works fully offline".
+- UI rules of thumb: all user-supplied text put into HTML goes through `html.escape`; Plotly charts use `config={"displayModeBar": False}` and `style_chart()` (transparent background, Inter, muted grid); use `width="stretch"` (not `use_container_width`, which is deprecated in Streamlit 1.66); headings use `anchor=False`; sentence case everywhere.
 
 ## Message checking (`sms.py`)
 

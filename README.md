@@ -303,6 +303,7 @@ The first run downloads PhiUSIIL into `data/` (needs internet once, about 15 MB)
 | File | What it does |
 |---|---|
 | `app.py` | Streamlit app: the user interface |
+| `style.css` | All of the app's styling: design tokens, cards, tabs and the phone layout |
 | `detector.py` | Detection logic: rule-based score and ML blend |
 | `evidence.py` | Similarity evidence: closeness, attack type and exact edits |
 | `sms.py` | Message checking: link extraction, scam wording and the sender check |

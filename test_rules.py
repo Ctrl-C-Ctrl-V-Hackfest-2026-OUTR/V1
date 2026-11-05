@@ -567,29 +567,31 @@ def check_ui(bundle):
     app = fresh()
     yield "app starts", not app.exception, ""
     labels = [b.label for b in app.button]
-    yield "example buttons", labels[:5] == ["paytrn.com", "sbi-kyc-update-now.top", "amazon.security-check.icu", "rediit.com", "google.com"], str(labels[:5])[:60]
+    yield "check button", labels[:1] == ["Check"], str(labels[:1])
+    yield "example buttons", labels[1:6] == ["paytrn.com", "sbi-kyc-update-now.top", "amazon.security-check.icu", "rediit.com", "google.com"], str(labels[1:6])[:60]
 
-    # link, words on the page, closeness, final risk score (None = not checked)
-    for link, words, close, final in (
-            ("yutube.com", ["Phishing", "One typo away from", "Did you mean"], "86%", "60/100"),
-            ("rediit.com", ["Suspicious", "Did you mean"], "83%", "45/100"),
-            ("startamazonstore.net", ["Contains the full brand name"], "38%", None),
-            ("reddit.com", ["Safe", "✅ Popular real website"], "100%", "0/100"),
-            ("sbi.bank.in", ["Safe", "✅ Verified Indian bank domain"], "100%", "0/100"),
-            ("accounts.spotify.com", ["Safe", "✅ Subdomain of popular real website spotify.com"], "100%", "0/100"),
-            ("sbi.bank.in@evil.com", ["Phishing", "\U0001F6A9 Uses @ to hide", "Did you mean"], None, "60/100")):
+    # link, words on the page, final risk score, closeness (None = not checked)
+    for link, words, final, close in (
+            ("yutube.com", ["Phishing", "One typo away from", "Did you mean"], "60/100", "86%"),
+            ("rediit.com", ["Suspicious", "Did you mean"], "45/100", "83%"),
+            ("startamazonstore.net", ["Contains the full brand name"], None, "38%"),
+            ("reddit.com", ["Safe", "Popular real website"], "0/100", "100%"),
+            ("sbi.bank.in", ["Safe", "Verified Indian bank domain"], "0/100", "100%"),
+            ("accounts.spotify.com", ["Safe", "Subdomain of popular real website spotify.com"], "0/100", "100%"),
+            ("sbi.bank.in@evil.com", ["Phishing", "Uses @ to hide", "Did you mean"], "60/100", None)):
         app.text_input(key="link_input").set_value(link).run()
         text = page_text(app)
         metrics = [m.value for m in app.metric][:3]
         missing = [word for word in words if word not in text]
-        good = not app.exception and not missing and (close is None or metrics[0] == close) and (final is None or metrics[2] == final)
+        good = (not app.exception and not missing and (final is None or metrics[0] == final)
+                and (close is None or metrics[1] == close))
         yield f"check a link: {link}", good, f"{metrics} missing={missing}"
 
     app.text_input(key="link_input").set_value("paytrn.com").run()
     text = page_text(app)
     yield "evidence: red changed letters", '<span class="k-changed">rn</span>' in text and '<span class="k-changed">m</span>' in text, ""
-    yield "evidence: heading and edits", any(h.value == "Similarity evidence" for h in app.subheader) and "replaces &#x27;m&#x27;" in text, ""
-    yield "fake letters show 99%, not 100%", app.metric[0].value == "99%", app.metric[0].value
+    yield "evidence: heading and edits", "Why Kavach thinks this" in text and "replaces &#x27;m&#x27;" in text, ""
+    yield "fake letters show 99%, not 100%", app.metric[1].value == "99%", app.metric[1].value
     result = json.loads(app.code[0].value)
     yield "single result as JSON", result["attack_type"] == "homoglyph" and list(result) == outputs.COLUMNS, ""
     yield "single result download", "Download JSON" in [b.label for b in app.get("download_button")], ""
@@ -599,7 +601,15 @@ def check_ui(bundle):
     app.text_input(key="link_input").set_value("<script>alert(1)</script>.com").run()
     yield "pasted HTML is escaped", not app.exception and "<script>" not in page_text(app).split("</style>")[-1], ""
     app.text_input(key="link_input").set_value("google.com").run()
-    yield "genuine site has no evidence box", not any(h.value == "Similarity evidence" for h in app.subheader), ""
+    yield "genuine site has no evidence box", "Why Kavach thinks this" not in page_text(app), ""
+
+    app.text_input(key="link_input").set_value("paytrn.com").run()
+    text = page_text(app)
+    yield "score gauge drawn", 'class="k-ring"' in text and ">70</text>" in text, ""
+    yield "verdict shows an icon and the word", "\U0001F6A8" in text and "Phishing" in text, ""
+    yield "reason chips show their points", 'class="k-chip"' in text and "+70" in text, ""
+    yield "hero and footer", 'class="k-wordmark"' in text and "Works fully offline" in text, ""
+    yield "stylesheet loaded once", text.count("--phishing: #EF4444") == 1, str(text.count("--phishing: #EF4444"))
 
     headings = {h.value for h in app.subheader}
     wanted = {"The three scores", "Model performance", "Tests on synthetic look-alikes", "Speed", "Output formats"}
@@ -609,7 +619,7 @@ def check_ui(bundle):
     # ----- the message tab -----
     app = fresh()
     yield "message tab exists", [t.label for t in app.tabs][:4] == [
-        "Check a link", "Check a message", "Check a list (CSV)", "How it works"], str([t.label for t in app.tabs])
+        "Check a link", "Check a message", "Check a list", "How it works"], str([t.label for t in app.tabs])
     labels = [b.label for b in app.button]
     yield "message example buttons", {"Bank KYC", "Electricity", "Lottery", "Parcel", "Genuine OTP"} <= set(labels), ""
 
@@ -667,7 +677,7 @@ def check_ui(bundle):
     yield "compare page: HTML compared", not app.exception and metrics.get("Content similarity", "").endswith("%"), metrics.get("Content similarity", "")
     yield "compare page: strong evidence", any("Strong phishing evidence" in e.value for e in app.error), ""
     yield "compare page: password and OTP warning", any("password" in w.value and "OTP" in w.value for w in app.warning), ""
-    yield "compare page: risk score unchanged", metrics.get("Final risk score") == "70/100", metrics.get("Final risk score", "")
+    yield "compare page: risk score unchanged", metrics.get("Final risk") == "70/100", metrics.get("Final risk", "")
     app.file_uploader(key="bad_image").upload("fake.png", image_bytes(login_screenshot(extra_text=True)), "image/png").run()
     app.file_uploader(key="good_image").upload("real.png", image_bytes(login_screenshot()), "image/png").run()
     visual = {m.label: m.value for m in app.metric}.get("Visual similarity", "")

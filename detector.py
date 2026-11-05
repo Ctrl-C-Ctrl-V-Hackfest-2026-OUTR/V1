@@ -32,7 +32,7 @@ def verdict_for(score: float) -> str:
 def settled(url: str, domain: str, score: int, reason: str, note: str) -> dict:
     """A result the rules are sure of. The ML model is skipped; explain() shows the note."""
     return {"url": url, "domain": domain, "score": score, "verdict": verdict_for(score),
-            "reasons": reason, "note": note}
+            "reasons": reason, "note": note, "reason_points": [score]}
 
 
 def analyze(url: str) -> dict:
@@ -42,7 +42,15 @@ def analyze(url: str) -> dict:
     domain = f"{parts.domain}.{parts.suffix}" if parts.suffix else parts.domain
     name = parts.domain
 
-    score, reasons = 0, []
+    score, reasons, weights = 0, [], []
+
+    def flag(points: int, text: str) -> int:
+        """Record one reason and how many points it added, and return those points to add.
+        The UI shows the points as a dot on each reason chip; the score itself is unchanged."""
+        reasons.append(text)
+        weights.append(points)
+        return points
+
     is_official = domain in LEGIT_DOMAINS
     is_bank = is_trusted_bank(full_host)
     is_popular = domain in POPULAR_SET
@@ -63,8 +71,7 @@ def analyze(url: str) -> dict:
             return settled(url, domain, at_score, at_reason,
                            f"The browser really goes to {full_host}, which we trust, but real links "
                            "don't hide part of their address with @, so the ML model was not needed.")
-        score += at_score
-        reasons.append(at_reason)
+        score += flag(at_score, at_reason)
     elif is_official:
         return settled(url, domain, 0, OFFICIAL_REASON,
                        "This is a known official domain, so it is Safe and no further checks were needed.")
@@ -87,73 +94,59 @@ def analyze(url: str) -> dict:
         typo_brand = one_typo_brand(clean)
         scam_brand = scam_words_brand(name)
         if is_homoglyph:
-            score += 70
             trick = "Hyphen added to copy" if decode_idn(name).replace("-", "") == clean else "Fake letters copy"
-            reasons.append(f"{trick} '{clean}': " + ", ".join(edits_between(name, clean)))
+            score += flag(70, f"{trick} '{clean}': " + ", ".join(edits_between(name, clean)))
         elif typo_brand:
             # +60 = Phishing on its own
-            score += 60
-            reasons.append(f"One typo away from '{typo_brand}': " + ", ".join(edits_between(clean, typo_brand)))
+            score += flag(60, f"One typo away from '{typo_brand}': "
+                          + ", ".join(edits_between(clean, typo_brand)))
         elif scam_brand:
             # +60 = Phishing on its own: sbikyc is a classic look-alike
-            score += 60
-            reasons.append(f"Brand '{scam_brand}' with only scam words added: '{decode_idn(name)}'")
+            score += flag(60, f"Brand '{scam_brand}' with only scam words added: '{decode_idn(name)}'")
         elif best_sim >= 80:
-            score += 45
-            reasons.append(f"Looks like '{best_brand}' but is not the real site")
+            score += flag(45, f"Looks like '{best_brand}' but is not the real site")
         else:
             # Only +45 (Suspicious): popular-site names cause more false alarms than our brands
             popular_target = popular_lookalike(name)
             abused_site = top_site_abuse(name)
             if popular_target:
-                score += 45
                 popular_name = extract(popular_target).domain
-                if normalize(name) == popular_name:
-                    reasons.append(f"Fake letters copy popular site '{popular_target}': "
-                                   + ", ".join(edits_between(name, popular_name)))
-                else:
-                    reasons.append(f"One typo away from popular site '{popular_target}': "
-                                   + ", ".join(edits_between(name, popular_name)))
+                trick = "Fake letters copy" if normalize(name) == popular_name else "One typo away from"
+                score += flag(45, f"{trick} popular site '{popular_target}': "
+                              + ", ".join(edits_between(name, popular_name)))
             elif abused_site:
-                score += 45
-                reasons.append(f"Uses the name of popular site '{abused_site}' but is not that site")
+                score += flag(45, f"Uses the name of popular site '{abused_site}' but is not that site")
 
     # 2. Brand name sitting in the subdomain, e.g. paytm.secure-login.xyz
     #    +45 so that "brand in subdomain" + a suspicious TLD (+15) always reaches 60 = Phishing
     if sub_brand:
-        score += 45
-        reasons.append(f"Brand '{sub_brand}' used in subdomain")
+        score += flag(45, f"Brand '{sub_brand}' used in subdomain")
 
     # 3. Cheap / abused TLD
     if parts.suffix in SUSPICIOUS_TLDS:
-        score += 15
-        reasons.append(f"Suspicious ending '.{parts.suffix}'")
+        score += flag(15, f"Suspicious ending '.{parts.suffix}'")
 
     # 4. Scammy words
     hits = [w for w in SUSPICIOUS_WORDS if w in full_host]
     if hits:
-        score += min(10 * len(hits), 20)
-        reasons.append("Contains words: " + ", ".join(hits))
+        score += flag(min(10 * len(hits), 20), "Contains words: " + ", ".join(hits))
 
     # 5. Structure tricks
     shown_name = decode_idn(name)  # what a person sees: the xn-- code itself has hyphens and digits
     if shown_name.count("-") >= 2:
-        score += 10
-        reasons.append(f"Many hyphens: {shown_name.count('-')} in '{shown_name}'")
+        score += flag(10, f"Many hyphens: {shown_name.count('-')} in '{shown_name}'")
     digits = re.findall(r"\d", shown_name)
     if digits:
-        score += 5
-        reasons.append("Digits in name: " + "".join(digits))
+        score += flag(5, "Digits in name: " + "".join(digits))
     if len(full_host) > 30:
-        score += 5
-        reasons.append(f"Very long domain: {len(full_host)} characters")
+        score += flag(5, f"Very long domain: {len(full_host)} characters")
     if re.fullmatch(r"[\d.]+", full_host):
-        score += 30
-        reasons.append(f"Raw IP address instead of a name: {full_host}")
+        score += flag(30, f"Raw IP address instead of a name: {full_host}")
 
     score = min(score, 100)
     return {"url": url, "domain": domain, "score": score, "verdict": verdict_for(score),
-            "reasons": "; ".join(reasons) or "No red flags found", "note": None}
+            "reasons": "; ".join(reasons) or "No red flags found", "note": None,
+            "reason_points": weights}
 
 
 def load_model():
@@ -217,7 +210,11 @@ def score_link(url: str, bundle, proba=None) -> dict:
         r["verdict"] = verdict_for(r["score"])
     if p >= 0.5:
         note = f"ML model: {r['ml_probability']:.0f}% chance of phishing, from its structure ({structure_facts(url)})"
-        r["reasons"] = note if r["reasons"] == "No red flags found" else r["reasons"] + "; " + note
+        if r["reasons"] == "No red flags found":
+            r["reasons"], r["reason_points"] = note, [r["score"] - r["rule_score"]]
+        else:
+            r["reasons"] += "; " + note
+            r["reason_points"] = r["reason_points"] + [r["score"] - r["rule_score"]]
     return r
 
 
