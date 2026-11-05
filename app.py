@@ -197,8 +197,8 @@ with tab1:
         # The three scores the judges look for
         c1, c2, c3 = st.columns(3)
         c1.metric(f"Closeness to {ev['nearest_genuine'] or 'any known site'}", f"{ev['closeness']}%",
-                  help="How close the name is to the nearest genuine site, after fixing fake letters. "
-                       "A real name copied whole inside a longer one counts as 100%.")
+                  help="How similar the whole name is to the nearest genuine site, after fixing fake letters. "
+                       "Only the real site itself gets 100%.")
         c2.metric("Phishing probability (ML)",
                   "not needed" if r["ml_probability"] is None else f"{r['ml_probability']:.0f}%")
         c3.metric("Final risk score", f"{r['score']}/100")
@@ -309,8 +309,9 @@ with tab3:
 
     st.subheader("The three scores", anchor=False)
     scores = [
-        ("Closeness", "How close the name is to the nearest genuine site (0-100%), from edit distance "
-                      "after fixing fake letters. The box next to it shows exactly which letters changed."),
+        ("Closeness", "How similar the whole name is to the nearest genuine site (0-100%), from edit distance "
+                      "after fixing fake letters. Only the real site itself gets 100%. The evidence box "
+                      "shows exactly which letters changed."),
         ("Phishing probability", "The ML model's % chance that the domain is phishing, judged only from "
                                  "how the address is built. Not needed when the site is known to be real."),
         ("Final risk score", "Rules plus ML, from 0 to 100. This decides the verdict."),

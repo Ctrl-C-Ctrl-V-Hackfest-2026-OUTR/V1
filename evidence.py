@@ -4,6 +4,8 @@ Kavach - similarity evidence: why does this name look like a genuine site, lette
 similarity_evidence() gives the nearest genuine domain, closeness %, edit distance, attack type,
 the exact edits ("missing 'o' at position 2") and the coloured parts the UI shows side by side.
 """
+import re
+
 from rapidfuzz import process
 from rapidfuzz.distance import DamerauLevenshtein
 
@@ -16,7 +18,7 @@ ATTACK_LABELS = {
     "none": "None found", "at_trick": "@ trick (hidden address)", "missing_letter": "Missing letter",
     "extra_letter": "Extra letter", "swapped_letters": "Swapped letters", "keyboard_neighbour": "Neighbouring key",
     "changed_letter": "Changed letter", "homoglyph": "Fake letters (homoglyph)", "cyrillic": "Cyrillic letters",
-    "hyphen": "Hyphen inserted", "combosquat": "Brand plus extra words", "tld_swap": "Different ending",
+    "hyphen": "Hyphen inserted", "combosquat": "Combosquatting", "tld_swap": "Different ending",
     "subdomain_abuse": "Brand in subdomain", "similar_name": "Similar name",
 }
 
@@ -110,6 +112,25 @@ def describe(step: tuple) -> str:
     return ""
 
 
+def _edit_lines(text: str, real: str, steps: list) -> list:
+    """The edits in plain English. If the real name is whole inside a longer one (startamazonstore),
+    the extra text becomes one line naming the extra words."""
+    is_whole = real in normalize(text).replace("-", "")
+    lines, extra_words = [], []
+    for step in steps:
+        if is_whole and step[0] == "extra" and len(step[1]) > 1:
+            extra_words += [word for word in re.split(r"[-.]", step[1]) if word]
+        elif describe(step):
+            lines.append(describe(step))
+    if extra_words:
+        quoted = [f"'{word}'" for word in extra_words]
+        listed = " and ".join(quoted) if len(quoted) <= 2 else ", ".join(quoted[:-1]) + f" and {quoted[-1]}"
+        has_fakes = any(step[0] == "fake" for step in steps)
+        brand = f"the brand name '{real}' (with fake letters)" if has_fakes else f"the full brand name '{real}'"
+        lines.insert(0, f"Contains {brand} plus extra word{'s' if len(quoted) > 1 else ''} {listed}")
+    return lines
+
+
 def edits_between(name: str, real: str) -> list:
     """The exact edits from a real name to a look-alike, e.g. ["'rn' replaces 'm' at position 5"]."""
     return [text for text in map(describe, _steps_with_extras(decode_idn(name), real)) if text]
@@ -140,10 +161,9 @@ def _distance(text: str, real: str) -> int:
 
 
 def _closeness(text: str, real: str) -> int:
-    """0-100. A real name copied whole inside a longer one counts as 100: nothing in it was changed."""
+    """0-100: how similar the whole name is, from Damerau-Levenshtein after fixing fake letters.
+    A brand copied inside a longer name scores low here: that is reported as combosquatting instead."""
     clean = normalize(text).replace("-", "")
-    if real in clean and len(clean) - len(real) >= 2:
-        return 100
     longest = max(len(clean), len(real), 1)
     return round(100 * (1 - _distance(text, real) / longest))
 
@@ -171,6 +191,10 @@ def _attack_type(text: str, real: str, steps: list) -> str:
 
 
 def _result(genuine, closeness, distance, attack, edits, shown_parts, real_parts, is_genuine=False) -> dict:
+    # Only the real site itself gets 100%. Fake letters can fix up to an exact match (paytrn -> paytm)
+    # and another ending doesn't change the name (reddit.xyz), so those stop at 99%.
+    if not is_genuine:
+        closeness = min(closeness, 99)
     return {"nearest_genuine": genuine, "closeness": closeness, "edit_distance": distance,
             "attack_type": attack, "attack_label": ATTACK_LABELS[attack], "edits": edits,
             "shown_parts": shown_parts, "real_parts": real_parts, "is_genuine": is_genuine}
@@ -190,7 +214,9 @@ def similarity_evidence(url: str, target) -> dict:
     if hidden is not None and target:
         shown = hidden.split(":")[0]
         edits = [f"text before the @ is ignored: the browser goes to {bare_host}"]
-        return _result(target, 100, 0, "at_trick", edits, [(shown, "same"), (f"@{bare_host}", "changed")], [(target, "same")])
+        real_host_name = decode_idn(parts.domain)  # what the browser really goes to
+        return _result(target, _closeness(real_host_name, real_name), _distance(real_host_name, real_name),
+                       "at_trick", edits, [(shown, "same"), (f"@{bare_host}", "changed")], [(target, "same")])
 
     # 2. The genuine site itself
     is_real = domain in LEGIT_DOMAINS or is_trusted_bank(host) or domain in POPULAR_SET
@@ -209,11 +235,13 @@ def similarity_evidence(url: str, target) -> dict:
             edits = [f"'{real_name}' is only a subdomain: the real domain here is {domain}"]
             shown_parts, real_parts = _parts_from_steps(steps)
             real_parts.append((target[len(real_name):], "same") if target.startswith(real_name) else (f" ({target})", "same"))
-            return _result(target, 100, 0, "subdomain_abuse", edits, shown_parts, real_parts)
+            whole_name = bare_host.removesuffix(f".{parts.suffix}").replace(".", "")
+            return _result(target, _closeness(whole_name, real_name), _distance(whole_name, real_name),
+                           "subdomain_abuse", edits, shown_parts, real_parts)
 
         steps = _steps_with_extras(name, real_name)
         shown_parts, real_parts = _parts_from_steps(steps)
-        edits = [text for text in map(describe, steps) if text]
+        edits = _edit_lines(name, real_name, steps)
         # Add the ending, so the whole domain is compared
         real_suffix = extract(target).suffix
         if parts.suffix != real_suffix:

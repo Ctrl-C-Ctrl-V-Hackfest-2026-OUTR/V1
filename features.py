@@ -70,6 +70,23 @@ FREE_HOSTING = {
     "duckdns.org", "ddns.net", "hopto.org", "sytes.net", "zapto.org",
     # Sell or give away subdomains that look like normal web addresses
     "eu.org", "sa.com", "ru.com",
+    # The hosts below were chosen from the data, not by hand. We counted how many hosts in our
+    # phishing feed (data/phishing-domains-ACTIVE.txt) sit on each registered domain in the Tranco
+    # top 20,000, ranked them, and went down the ranking adding the first 30 not already listed
+    # above: from plesk.page (1,034 hosts) to azurestaticapps.net (88). The rule was to skip one
+    # company's own site with no public hosting, and none came up in that stretch.
+    # Cloud storage and app hosting
+    "amazonaws.com", "appdomain.cloud", "amplifyapp.com", "windows.net", "azurestaticapps.net",
+    "linodeobjects.com", "myqcloud.com", "selcdn.ru", "ondigitalocean.app", "digitaloceanspaces.com",
+    "b-cdn.net", "trycloudflare.com",
+    # Web hosting, including free and temporary addresses
+    "plesk.page", "tw1.ru", "secureserver.net", "wpenginepowered.com", "temporary.site", "rf.gd",
+    # Website builders and user pages
+    "filesusr.com", "teachable.com", "myportfolio.com", "framer.website", "jimdofree.com",
+    # Link services anyone can use
+    "app.link", "page.link",
+    # Free subdomains and dynamic DNS
+    "work.gd", "wikaba.com", "otzo.com", "dynv6.net", "ydns.eu",
 }
 _FREE_HOSTING_ENDINGS = tuple("." + host for host in FREE_HOSTING)
 
@@ -253,6 +270,16 @@ def brand_match(name: str):
             best_brand, best_sim = brand, sim
     is_homoglyph = clean in BRANDS and name != clean
     return clean, best_brand, best_sim, is_homoglyph
+
+
+def scam_words_brand(name: str):
+    """Return the 3-4 letter brand if the whole name is that brand plus only scam words, else None.
+    sbikyc, kycsbi and sbi-login count. lesbian and sbi-kyc-update-now don't."""
+    clean = normalize(name).replace("-", "")
+    for brand in BRANDS:
+        if len(brand) <= 4 and clean != brand and re.fullmatch(f"(?:{_SCAM_WORDS})*{brand}(?:{_SCAM_WORDS})*", clean):
+            return brand
+    return None
 
 
 def edit_distance(a: str, b: str) -> int:

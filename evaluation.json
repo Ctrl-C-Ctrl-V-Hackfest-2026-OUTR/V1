@@ -119,7 +119,7 @@
         "count": 215,
         "rules": 0.9906976744186047,
         "final": 0.9906976744186047,
-        "phishing": 0.6325581395348837
+        "phishing": 0.6697674418604651
       },
       "popular": {
         "count": 890,
@@ -168,7 +168,7 @@
     "final": 0.0575,
     "phishing": 0.0045
   },
-  "ms_per_domain": 6.393840385222603,
-  "batch_ms_per_domain": 1.1355336806652043,
-  "batch_per_second": 880.6431874519058
+  "ms_per_domain": 8.246276234080598,
+  "batch_ms_per_domain": 1.7407119145354342,
+  "batch_per_second": 574.4775983031533
 }

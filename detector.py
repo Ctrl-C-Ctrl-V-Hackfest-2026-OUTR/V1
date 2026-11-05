@@ -14,7 +14,7 @@ import pandas as pd
 from features import (BRANDS, FEATURE_NAMES, LEGIT_DOMAINS, POPULAR_SET, SUSPICIOUS_TLDS, SUSPICIOUS_WORDS,
                       at_imitates, before_at, brand_match, decode_idn, extract, extract_features,
                       is_free_hosted, is_trusted_bank, normalize, one_typo_brand, parse, popular_lookalike,
-                      subdomain_brand, top_site_abuse, top_site_in_subdomain)
+                      scam_words_brand, subdomain_brand, top_site_abuse, top_site_in_subdomain)
 from evidence import edits_between, similarity_evidence
 
 HERE = Path(__file__).parent
@@ -85,6 +85,7 @@ def analyze(url: str) -> dict:
     if not is_popular:
         clean, best_brand, best_sim, is_homoglyph = brand_match(name)
         typo_brand = one_typo_brand(clean)
+        scam_brand = scam_words_brand(name)
         if is_homoglyph:
             score += 70
             trick = "Hyphen added to copy" if decode_idn(name).replace("-", "") == clean else "Fake letters copy"
@@ -93,6 +94,10 @@ def analyze(url: str) -> dict:
             # +60 = Phishing on its own
             score += 60
             reasons.append(f"One typo away from '{typo_brand}': " + ", ".join(edits_between(clean, typo_brand)))
+        elif scam_brand:
+            # +60 = Phishing on its own: sbikyc is a classic look-alike
+            score += 60
+            reasons.append(f"Brand '{scam_brand}' with only scam words added: '{decode_idn(name)}'")
         elif best_sim >= 80:
             score += 45
             reasons.append(f"Looks like '{best_brand}' but is not the real site")

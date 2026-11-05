@@ -17,7 +17,7 @@ It works fully offline: no WHOIS, no online lookups, no API calls. Everything ru
 
 Every domain goes through two checks that are combined into one verdict, and you always see three numbers:
 
-- **Closeness:** how close the name is to the nearest genuine site, 0-100%, from Damerau-Levenshtein distance after fixing fake letters. A real name copied whole inside a longer one counts as 100%. The app also shows the attack type and the exact edits, such as `'rn' replaces 'm' at position 5`, with the changed letters highlighted.
+- **Closeness:** how similar the *whole* name is to the nearest genuine site, 0-100%, from Damerau-Levenshtein distance after fixing fake letters. Only the real site itself gets 100%. A brand copied inside a longer name scores low here (`startamazonstore.net` is 38% similar to `amazon.in`), because that is reported separately as **Combosquatting**: "Contains the full brand name 'amazon' plus extra words 'start' and 'store'". The app also shows the attack type and the exact edits, such as `'rn' replaces 'm' at position 5`, with the changed letters highlighted.
 - **Phishing probability:** the ML model's % chance that it is phishing.
 - **Final risk score:** rules plus ML, from 0 to 100. This decides the verdict.
 
@@ -38,6 +38,7 @@ Everything else gets a risk score. Of the look-alike checks (fake letters, one t
 | The same, when the hidden part names a brand, official domain or `.bank.in` address (`sbi.bank.in@evil.com`) | +60 |
 | Fake letters that spell a brand (`0` for `o`, `rn` for `m`, `vv` for `w`, Cyrillic letters, `xn--` names, ...) | +70 |
 | One typo from a brand with 5+ letters (`yutube.com`). A short list of everyday words such as `tomato` skips this check | +60 |
+| A short brand (3-4 letters) with nothing but scam words around it (`sbikyc.net`, `sbilogin.net`, `kycsbi.net`) | +60 |
 | Name looks like a known brand (80%+ similar; a brand hidden inside the name counts as 90%) | +45 |
 | One typo from a top-2,000 site, or fake letters that spell one (`rediit.com`) | +45 |
 | A top-200 site's name on another ending, or with only scam words added (`reddit.xyz`, `reddit-login.com`) | +45 |
@@ -53,13 +54,13 @@ A brand counts as hidden inside a name or subdomain if it is a whole hyphen-sepa
 
 - **6+ letters:** anywhere inside (`startamazonstore`, `myflipkartoffer`).
 - **5 letters:** at the start of a word (`paytmkyc`).
-- **3-4 letters:** when everything else is scam words (`sbikyc`, `sbilogin`, `kycsbi`).
+- **3-4 letters:** when everything else is scam words (`sbikyc`, `sbilogin`, `kycsbi`). This exact pattern is a classic look-alike, so it scores +60 on its own.
 
 So `pineapple.com` does not count as `apple`, and `lesbian.com` does not count as `sbi`.
 
 Subdomains of popular sites are Safe, with two exceptions that skip the name check but get every other check:
 
-- **Free-hosting sites** (`random.weebly.com`, `paytm-login.weebly.com`), because anyone can publish there.
+- **Free-hosting sites** (`random.weebly.com`, `phish.s3.amazonaws.com`), because anyone can publish there. The list is partly chosen from the data: we counted how many hosts in the phishing feed sit on each Tranco top-20,000 domain and added the top 30 that offer public hosting.
 - **Another brand's name in the subdomain** (`paytm.spotify.com`).
 
 An `@` trick never gets an instant Safe. If the browser really ends up on a trusted site (`user@reddit.com`), only the `@` points count and the model is skipped.
@@ -97,7 +98,7 @@ Examples:
 | `sbi-kyc-update-now.top` | 90 | 94% | 92 | Phishing |
 | `amazon.security-check.icu` | 60 | 99% | 79 | Phishing |
 | `rediit.com` | 45 | 18% | 45 | Suspicious |
-| `sbikyc.net` | 55 | 65% | 55 | Suspicious |
+| `sbikyc.net` | 70 | 65% | 70 | Phishing |
 | `google.com` | 0 | n/a | 0 | Safe |
 | `sbi.bank.in` | 0 | n/a | 0 | Safe |
 | `accounts.spotify.com` | 0 | n/a | 0 | Safe |
@@ -203,7 +204,24 @@ The trained model (`model.joblib`) is included in the repo, so you do not need t
 python test_rules.py
 ```
 
-Checks the expected verdict for each test link, prints a table and a summary, and exits with code 1 if anything fails.
+One command runs everything, in about 30 seconds. It prints a table per section, a summary, and exits with code 1 if anything fails:
+
+| Section | What it checks |
+|---|---|
+| Links | The expected verdict for each test link |
+| Evidence | Nearest genuine site, closeness %, attack type, the exact edits and the reason text |
+| Exports and command-line tool | CSV, JSON and Excel columns, formula-safe cells, and `kavach_cli.py` run for real |
+| Page comparison | Saved HTML and screenshot similarity, on pages made up inside the test |
+| App (headless) | The real `app.py` driven by Streamlit's test tool: verdict card, evidence box, downloads and error messages |
+
+Expected verdicts are what a link *should* get, so if a test fails, look at why before changing it. A few verdicts are decided by the ML model and are marked with a comment: retraining can flip those.
+
+**Check these by eye before a demo** (no test can see them):
+
+- The app in a browser: colours, spacing and the dark theme.
+- The red, green and grey letters in the evidence box line up as expected.
+- A real CSV upload, and that the downloaded CSV, JSON and Excel files open properly.
+- The page comparison with a page you really saved from a browser, rather than the made-up ones in the test.
 
 ### Retrain the model (optional)
 
@@ -226,7 +244,7 @@ The first run downloads PhiUSIIL into `data/` (needs internet once, about 15 MB)
 | `features.py` | Shared brand list, trusted and free-hosting lists, scam words, look-alike logic and ML features |
 | `lookalikes.py` | Generates synthetic look-alikes into `data/synthetic_pairs.csv` |
 | `evaluate.py` | Tests detection per attack type, false alarms and speed; writes `evaluation.json` |
-| `test_rules.py` | Regression tests: the expected verdict for each test link |
+| `test_rules.py` | All the tests in one command: links, evidence, exports, page comparison and the headless app |
 | `popular_domains.txt` | The top popular sites, most popular first |
 | `build_popular.py` | Rebuilds `popular_domains.txt` from `data/tranco.csv` and prints what it removed |
 | `train.py` | Downloads data, trains and evaluates the model |

@@ -28,10 +28,10 @@ Judged on closeness/probability scores, detection speed, ease of use and flexibl
 
 - `app.py`: Streamlit UI only. Note: an unrelated old Flask `app.py` is in Downloads. Ignore it.
 - `detector.py`: `analyze()`, `full_analysis()`, `lookalike_target()`, `explain()`, `load_model()`. Must not import `app.py` or streamlit.
-- `evidence.py`: `similarity_evidence()` gives nearest genuine domain, closeness, edit distance, attack type and exact edits. `align()` is the letter-by-letter alignment.
+- `evidence.py`: `similarity_evidence()` gives nearest genuine domain, closeness, edit distance, attack type and exact edits. `align()` is the letter-by-letter alignment. Closeness is whole-name Damerau-Levenshtein similarity after fixing fake letters, and `_result()` caps it at 99% for anything that is not the genuine site, so a fake never shows 100%. A brand copied inside a longer name scores low and is reported as `combosquat` instead, with the line "Contains the full brand name 'amazon' plus extra words...".
 - `outputs.py`: `check_many()` scores a whole list in one model call, plus `to_csv`, `to_json`, `to_xlsx`. Exports show cells starting with `= + - @` as text, so a spreadsheet can't run them.
 - `kavach_cli.py`: `python kavach_cli.py input.csv|input.txt --format csv|json|xlsx --out file`.
-- `test_rules.py`: `python test_rules.py` checks (input, expected verdict) cases in `LINK_CASES`, prints a table and exits with code 1 on any failure. Add new suites to `SUITES` (the file says how to add SMS messages). Must not import `app.py`.
+- `test_rules.py`: `python test_rules.py` runs everything in about 30 seconds and exits with code 1 on any failure. Five sections: Links (`LINK_CASES`, input and expected verdict), Evidence, Exports and command-line tool, Page comparison, and App (headless, through `streamlit.testing.v1.AppTest`). A section that raises counts as one failed check, so one missing package can't hide the rest. The file says how to add SMS messages. Must not import `app.py`.
 - `lookalikes.py`: `python lookalikes.py` writes `data/synthetic_pairs.csv` (gitignored; genuine, lookalike, attack_type).
 - `evaluate.py`: `python evaluate.py` prints detection per attack type, false alarms and speed, and writes `evaluation.json` (committed; the How it works tab shows it).
 - `page_compare.py`: optional saved-page comparison. Reads uploads only, fetches nothing, never changes the risk score.
@@ -52,16 +52,17 @@ Everything else gets a score. An address with `@` before the host (`before_at()`
 - `@` trick: +40, reason "Uses @ to hide the real address — the browser goes to <real host>". +60 instead (so Phishing) if the part before the `@` names a brand, official domain or `.bank.in` address (`at_imitates()`, e.g. `sbi.bank.in@evil.com`). An `@` in the path doesn't count.
 - If the real host is one of the trusted ones above (`user@reddit.com`, `someone@gmail.com`), only those points count and ML is skipped.
 
-Rules 1 to 4 are one group: only the first match counts, and the group is skipped when the registered domain is popular (e.g. `paytm-login.weebly.com`).
+Rules 1 to 5 are one group: only the first match counts, and the group is skipped when the registered domain is popular (e.g. `paytm-login.weebly.com`).
 
 1. **Homoglyphs:** normalize 0→o, 1→l (or i), rn→m, vv→w, 3→e, 5→s, Cyrillic look-alikes (`CYRILLIC_LETTERS`) and decoded `xn--` names. If the normalized name exactly matches a brand, +70.
 2. **One typo from a brand:** exactly 1 Damerau-Levenshtein edit (`edit_distance()`) from a brand with 5+ letters: +60, so Phishing on its own. Names in `ORDINARY_WORDS` (tomato, mantra, email…) skip this rule, but usually still hit rule 3.
-3. **Typosquatting:** rapidfuzz `fuzz.ratio` of the domain name against a `BRANDS` dict (→ list of real domains, e.g. amazon → amazon.in and amazon.com). A brand hidden inside counts as 90% similar. ≥80% similar gives +45. This number is internal: the UI only shows closeness, so users see one similarity figure. A brand is "hidden inside" (`brand_hidden_in()`) if it is a whole hyphen-separated word (`sbi-kyc`, `kyc-paytm`), or, also checking with hyphens removed (`ama-zon-login`, `hdfc-bank-login`): 6+ letter brands anywhere inside (`startamazonstore`), 5-letter brands at the start of a word (`paytmkyc`), 3-4 letter brands when everything else is `SUSPICIOUS_WORDS` (`sbikyc`, `kycsbi`). So `pineapple` and `lesbian` don't count.
-4. **Popular sites:** +45, only Suspicious on its own, because these names cause more false alarms than curated brands. Either exactly 1 edit from (or fake letters spelling) a name in `POPULAR_NAMES` (top 2,000 sites, 5+ letters; `popular_lookalike()`), or a top-200 name on another ending or with only scam words added (`top_site_abuse()`: `reddit.xyz`, `reddit-login.com`). `COMMON_WORD_SITES` (office, cloud, forms…) skip `top_site_abuse()`.
-5. Brand in a subdomain (`subdomain_brand()`, same word test as rule 3, e.g. `paytm.verify-account.click`): +45, so brand-in-subdomain plus a suspicious TLD always reaches 60 (Phishing).
-6. Suspicious TLDs (xyz, top, tk, click, online, info…): +15.
-7. Scam words (login, verify, kyc, update, reward…): +10 each, max +20.
-8. ≥2 hyphens +10, digits +5, length >30 +5, raw IP +30.
+3. **Short brand plus only scam words:** a 3-4 letter brand with nothing but `SUSPICIOUS_WORDS` around it (`scam_words_brand()`: sbikyc, kycsbi, sbi-login): +60, so Phishing on its own. `lesbian` and `sbismith` don't match, because the rest must be scam words.
+4. **Typosquatting:** rapidfuzz `fuzz.ratio` of the domain name against a `BRANDS` dict (→ list of real domains, e.g. amazon → amazon.in and amazon.com). A brand hidden inside counts as 90% similar. ≥80% similar gives +45. This number is internal: the UI only shows closeness, so users see one similarity figure. A brand is "hidden inside" (`brand_hidden_in()`) if it is a whole hyphen-separated word (`sbi-kyc`, `kyc-paytm`), or, also checking with hyphens removed (`ama-zon-login`, `hdfc-bank-login`): 6+ letter brands anywhere inside (`startamazonstore`), 5-letter brands at the start of a word (`paytmkyc`), 3-4 letter brands when everything else is `SUSPICIOUS_WORDS` (`sbikyc`, `kycsbi`). So `pineapple` and `lesbian` don't count.
+5. **Popular sites:** +45, only Suspicious on its own, because these names cause more false alarms than curated brands. Either exactly 1 edit from (or fake letters spelling) a name in `POPULAR_NAMES` (top 2,000 sites, 5+ letters; `popular_lookalike()`), or a top-200 name on another ending or with only scam words added (`top_site_abuse()`: `reddit.xyz`, `reddit-login.com`). `COMMON_WORD_SITES` (office, cloud, forms…) skip `top_site_abuse()`.
+6. Brand in a subdomain (`subdomain_brand()`, same word test as rule 3, e.g. `paytm.verify-account.click`): +45, so brand-in-subdomain plus a suspicious TLD always reaches 60 (Phishing).
+7. Suspicious TLDs (xyz, top, tk, click, online, info…): +15.
+8. Scam words (login, verify, kyc, update, reward…): +10 each, max +20.
+9. ≥2 hyphens +10, digits +5, length >30 +5, raw IP +30.
 
 - Verdict: ≥60 Phishing, 30–59 Suspicious, <30 Safe. Every verdict shows the reasons, and each reason quotes its evidence (`Many hyphens: 3 in '...'`, `One typo away from 'youtube': missing 'o' at position 2`).
 - `popular_domains.txt` (committed, 19,998 domains in rank order) is made by `python build_popular.py` from `data/tranco.csv`. It removes domains that imitate a brand and prints what it removed. Real sites that only look like a match stay in its `KEEP` dict (mail.com, kodak.com, telegra.ph, googl.com…).
@@ -105,7 +106,7 @@ Added on the `ml-model` branch. The rule-based score above is kept; the model ad
   - The UI shows "Decided by": `Rules` or `Rules + ML` (the latter only when ML actually raised the score).
   - These skip the model (results from `settled()` in `detector.py`, which have a `note` that `explain()` shows): official domains, `.bank.in`, popular sites and their subdomains, and an `@` trick whose real host is one of those.
   - Subdomains of `FREE_HOSTING` sites (in `features.py`) always go to the model, because anyone can publish there (e.g. `random.weebly.com`). The model scores almost any subdomain high, so a neutral subdomain there ends up Suspicious.
-  - `FREE_HOSTING` is hand-picked and incomplete (the comment above it says how), and a popular site missing from it gets instant Safe for all its subdomains. 12,233 of the 392,164 feed hosts (3.1%) are in that position, on 477 sites, led by plesk.page, amazonaws.com, tw1.ru, trycloudflare.com and appdomain.cloud.
+  - `FREE_HOSTING` has two parts, and the comment above it says which is which: the hosts listed by hand, and 30 more chosen from the data (count the feed hosts on each Tranco top-20,000 domain, rank them, take the first 30 not already listed, skipping one company's own site with no public hosting). If the feed is ever refreshed, redo that count before changing the list. It is still incomplete, and a popular site missing from it gets instant Safe for all its subdomains.
   - If `model.joblib` is missing, the app shows the rule score only with a warning.
 - Current metrics (test set of 43,805 hosts): accuracy 85.3%, precision 93.5%, recall 66.4%, F1 77.6%. Top features: subdomain_count, digits, suspicious_tld, length, dots.
 - Probabilities are well calibrated on the test set, but only at PhiUSIIL's mix of 38% phishing. Real-world precision will be lower.
@@ -123,7 +124,8 @@ Added on the `ml-model` branch. The rule-based score above is kept; the model ad
 2. Add an ML model (done on the `ml-model` branch, see the Machine-learning model section).
 3. Polish the UI for the demo (done, see the UI description above).
 4. Prepare a demo flow: paste a fake link → red verdict with evidence box → upload a CSV → show speed and downloads.
-5. All five PS-08 deliverables are built (`deliverables` branch). Open decision: add the biggest open hosts (amazonaws.com, plesk.page, cloudfront.net…) to `FREE_HOSTING`.
+5. All five PS-08 deliverables are built (`deliverables` branch).
+6. Still open: one-typo fakes of 3-4 letter brands (`bsi.co.in`) are missed on purpose; `FREE_HOSTING` is still incomplete below the top 30; the model's signal is mostly address structure, not look-alikes. Synthetic tests: 1.7 ms per domain as a list, false alarms 5.8%.
 
 ## How to work with me
 
