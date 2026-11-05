@@ -1,0 +1,162 @@
+{
+  "attacks": [
+    {
+      "attack_type": "missing_letter",
+      "brands": {
+        "count": 206,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 0.9514563106796117
+      },
+      "popular": {
+        "count": 843,
+        "rules": 0.8837485172004745,
+        "final": 0.8932384341637011,
+        "phishing": 0.03440094899169632
+      }
+    },
+    {
+      "attack_type": "extra_letter",
+      "brands": {
+        "count": 215,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 0.9302325581395349
+      },
+      "popular": {
+        "count": 890,
+        "rules": 0.8438202247191011,
+        "final": 0.8539325842696629,
+        "phishing": 0.033707865168539325
+      }
+    },
+    {
+      "attack_type": "swapped_letters",
+      "brands": {
+        "count": 196,
+        "rules": 0.9642857142857143,
+        "final": 0.9642857142857143,
+        "phishing": 0.9642857142857143
+      },
+      "popular": {
+        "count": 799,
+        "rules": 0.899874843554443,
+        "final": 0.9011264080100125,
+        "phishing": 0.04005006257822278
+      }
+    },
+    {
+      "attack_type": "keyboard_neighbour",
+      "brands": {
+        "count": 215,
+        "rules": 0.9302325581395349,
+        "final": 0.9302325581395349,
+        "phishing": 0.9302325581395349
+      },
+      "popular": {
+        "count": 888,
+        "rules": 0.838963963963964,
+        "final": 0.8412162162162162,
+        "phishing": 0.036036036036036036
+      }
+    },
+    {
+      "attack_type": "homoglyph",
+      "brands": {
+        "count": 121,
+        "rules": 0.9752066115702479,
+        "final": 0.9752066115702479,
+        "phishing": 0.9752066115702479
+      },
+      "popular": {
+        "count": 431,
+        "rules": 0.91415313225058,
+        "final": 0.9211136890951276,
+        "phishing": 0.058004640371229696
+      }
+    },
+    {
+      "attack_type": "cyrillic",
+      "brands": {
+        "count": 186,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 1.0
+      },
+      "popular": {
+        "count": 703,
+        "rules": 0.930298719772404,
+        "final": 0.930298719772404,
+        "phishing": 0.06827880512091039
+      }
+    },
+    {
+      "attack_type": "hyphen",
+      "brands": {
+        "count": 201,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 1.0
+      },
+      "popular": {
+        "count": 807,
+        "rules": 0.8983890954151177,
+        "final": 0.9083023543990086,
+        "phishing": 0.08921933085501858
+      }
+    },
+    {
+      "attack_type": "combosquat",
+      "brands": {
+        "count": 215,
+        "rules": 0.9906976744186047,
+        "final": 0.9906976744186047,
+        "phishing": 0.6325581395348837
+      },
+      "popular": {
+        "count": 890,
+        "rules": 0.755056179775281,
+        "final": 0.8629213483146068,
+        "phishing": 0.4134831460674157
+      }
+    },
+    {
+      "attack_type": "tld_swap",
+      "brands": {
+        "count": 199,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 0.4371859296482412
+      },
+      "popular": {
+        "count": 833,
+        "rules": 0.7671068427370948,
+        "final": 0.8643457382953181,
+        "phishing": 0.35294117647058826
+      }
+    },
+    {
+      "attack_type": "subdomain_abuse",
+      "brands": {
+        "count": 129,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 1.0
+      },
+      "popular": {
+        "count": 534,
+        "rules": 1.0,
+        "final": 1.0,
+        "phishing": 1.0
+      }
+    }
+  ],
+  "n_fakes": 9501,
+  "false_alarms": {
+    "count": 2000,
+    "rules": 0.036,
+    "final": 0.0575,
+    "phishing": 0.0045
+  },
+  "ms_per_domain": 5.68884727923383
+}

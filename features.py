@@ -7,6 +7,7 @@ This file must NOT import app.py (app.py starts the Streamlit UI when imported).
 """
 import math
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import tldextract
@@ -106,14 +107,46 @@ SUSPICIOUS_TLDS = {"xyz", "top", "tk", "ml", "ga", "cf", "gq", "buzz", "click",
 SUSPICIOUS_WORDS = ["login", "verify", "secure", "update", "kyc", "account",
                     "bank", "reward", "bonus", "free", "support", "confirm"]
 _SCAM_WORDS = "|".join(SUSPICIOUS_WORDS)  # regex piece used by brand_hidden_in()
+_COMBO_WORDS = _SCAM_WORDS + "|offer"     # regex piece used by top_site_abuse()
+
+# Top-200 sites that are plain words. Someone else can honestly use these names (forms.net,
+# office-update.com), so top_site_abuse() leaves them out.
+COMMON_WORD_SITES = {"cloud", "forms", "pages", "static", "archive", "example", "workers", "opera",
+                     "europa", "sentry", "apache", "office", "windows"}
+# name -> real domain for the top 200 sites, hyphens removed ("reddit" -> "reddit.com").
+TOP_SITE_NAMES = {}
+for _domain in POPULAR_DOMAINS[:200]:
+    _name = extract(_domain).domain.replace("-", "")
+    if sum(c.isalpha() for c in _name) >= 5 and _name not in COMMON_WORD_SITES:
+        TOP_SITE_NAMES.setdefault(_name, _domain)
 
 # Look-alike characters: 0->o, 1->l, rn->m, etc.
 HOMOGLYPHS = [("rn", "m"), ("vv", "w"), ("0", "o"), ("1", "l"),
               ("3", "e"), ("5", "s"), ("@", "a")]
 
 
+# Cyrillic letters that look exactly like Latin ones. Browsers can show these as the real name.
+CYRILLIC_LETTERS = {"а": "a", "с": "c", "е": "e", "һ": "h", "і": "i", "ј": "j",
+                    "о": "o", "р": "p", "ѕ": "s", "х": "x", "у": "y"}
+
+
+def _decode_punycode(match) -> str:
+    """xn--pytm-5cd is how a name with foreign letters is really stored; turn it back into letters."""
+    try:
+        return match.group().encode("ascii").decode("idna")
+    except UnicodeError:
+        return match.group()  # not valid punycode, so leave it as it is
+
+
+def decode_idn(text: str) -> str:
+    """Turn any xn-- parts of a host back into the letters a person would see."""
+    return re.sub(r"xn--[a-z0-9-]+", _decode_punycode, text)
+
+
+@lru_cache(maxsize=4096)  # called dozens of times per domain, once for every brand
 def normalize(text: str) -> str:
     """Turn look-alike characters back into the letters they imitate."""
+    text = "".join(CYRILLIC_LETTERS.get(c, c) for c in decode_idn(text))
     for fake, real in HOMOGLYPHS:
         text = text.replace(fake, real)
     return text
@@ -205,7 +238,12 @@ def brand_match(name: str):
       best_sim     - its similarity, 0-100 (a brand hidden inside counts as 90)
       is_homoglyph - True when fake letters turn the name into a brand exactly
     """
-    clean = normalize(name.replace("-", ""))
+    # Fix the letters first and remove hyphens after: the hyphens in xn--pytm-53d are part of its code
+    clean = normalize(name).replace("-", "")
+    # normalize() reads 1 as l, but it can stand for i too: sb1 -> sbi
+    one_as_i = normalize(name.replace("1", "i")).replace("-", "")
+    if one_as_i in BRANDS:
+        clean = one_as_i
     best_brand, best_sim = None, 0
     for brand in BRANDS:
         sim = fuzz.ratio(clean, brand)
@@ -240,11 +278,27 @@ def popular_lookalike(name: str):
     The scorer must be DamerauLevenshtein.distance itself, not a wrapper: that is how
     rapidfuzz knows lower is better and treats score_cutoff=1 as "at most 1 edit".
     """
-    match = process.extractOne(name, _POPULAR_NAME_LIST,
+    clean = normalize(name)
+    if clean != name and clean in POPULAR_NAMES:  # fake letters spell it exactly: rnozilla, or Cyrillic
+        return POPULAR_NAMES[clean]
+    match = process.extractOne(clean, _POPULAR_NAME_LIST,
                                scorer=DamerauLevenshtein.distance, score_cutoff=1)
     # A distance of 0 means the same name on another ending, which is not a typo
     if match and match[1] == 1:
         return POPULAR_NAMES[match[0]]
+    return None
+
+
+def top_site_abuse(name: str):
+    """Return the real domain if this name abuses a top-200 site, else None:
+    the same name on another ending (reddit.xyz), or the name with only scam words around it
+    (reddit-login.com, loginreddit.com). Other words next to it don't count: reddit-fans.com is fine."""
+    clean = normalize(name).replace("-", "")
+    if clean in TOP_SITE_NAMES:
+        return TOP_SITE_NAMES[clean]
+    for site, domain in TOP_SITE_NAMES.items():
+        if site in clean and re.fullmatch(f"(?:{_COMBO_WORDS})*{site}(?:{_COMBO_WORDS})*", clean):
+            return domain
     return None
 
 
