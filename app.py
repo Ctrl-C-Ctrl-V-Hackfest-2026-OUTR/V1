@@ -15,6 +15,7 @@ import streamlit as st
 
 from detector import explain, full_analysis, load_model
 from outputs import EXPORTERS, FORMATS, check_many, flat_row, read_domains, speed, to_json
+from page_compare import compare_html, compare_images, conclusion
 
 HERE = Path(__file__).parent
 
@@ -96,6 +97,57 @@ def check_file(data: bytes, filename: str, _bundle) -> tuple:
     return check_many(read_domains(data, filename), _bundle)
 
 
+def show_page_comparison(domain_differs):
+    """Optional section: compare a saved copy of the suspicious page with the genuine one."""
+    st.caption("Upload saved copies of both pages (browser: Save page as, or a screenshot). "
+               "Nothing is fetched from the internet, and the files are only read, never opened or run. "
+               "This is extra evidence and does not change the risk score.")
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Suspicious page**")
+        bad_html = st.file_uploader("Saved HTML", type=["html", "htm"], key="bad_html")
+        bad_image = st.file_uploader("Screenshot", type=["png", "jpg", "jpeg"], key="bad_image")
+    with right:
+        st.markdown("**Genuine page**")
+        good_html = st.file_uploader("Saved HTML", type=["html", "htm"], key="good_html")
+        good_image = st.file_uploader("Screenshot", type=["png", "jpg", "jpeg"], key="good_image")
+
+    content = visual = None
+    if bad_html and good_html:
+        content = compare_html(bad_html.getvalue(), good_html.getvalue())
+    if bad_image and good_image:
+        try:
+            visual = compare_images(bad_image.getvalue(), good_image.getvalue())
+        except ValueError as err:
+            st.error(str(err))
+    if content is None and visual is None:
+        st.info("Upload both HTML files and/or both screenshots to compare them.")
+        return
+
+    c1, c2 = st.columns(2)
+    c1.metric("Content similarity", "not compared" if content is None else f"{content['content_similarity']}%")
+    c2.metric("Visual similarity", "not compared" if visual is None else f"{visual['visual_similarity']}%")
+    level, sentence = conclusion(content and content["content_similarity"],
+                                 visual and visual["visual_similarity"], domain_differs)
+    {"strong": st.error, "same_site": st.success, "none": st.info}[level](sentence)
+
+    if content:
+        names = {"title": "Title", "form_fields": "Form fields", "visible_text": "Visible text (TF-IDF cosine)",
+                 "image_names": "Logo and image file names"}
+        st.markdown("**Content evidence:** " + " · ".join(f"{names[k]} {v}%" for k, v in content["parts"].items()))
+        if content["asks_for_password"] or content["asks_for_otp"]:
+            asks = " and ".join(word for word, flag in (("a password", content["asks_for_password"]),
+                                                        ("an OTP or PIN", content["asks_for_otp"])) if flag)
+            st.warning(f"The suspicious page asks for {asks}.")
+        for label, values in (("Same form fields", content["shared_fields"]),
+                              ("Same image files", content["shared_images"])):
+            if values:
+                st.caption(f"{label}: " + ", ".join(values))
+    if visual:
+        st.markdown(f"**Visual evidence:** Perceptual hash {visual['hash_similarity']}% · "
+                    f"Structural similarity {visual['structural_similarity']}%")
+
+
 def use_example(domain: str):
     """Button callback: put the example in the input box (the check runs on the rerun)."""
     st.session_state["link_input"] = domain
@@ -173,10 +225,15 @@ with tab1:
             st.download_button("Download JSON", result_json, "kavach_result.json", "application/json",
                                on_click="ignore")
 
+    # Is the checked link somewhere other than the genuine site? None until a link is pasted.
+    link_is_elsewhere = not r["evidence"]["is_genuine"] if url.strip() else None
+    with st.expander("Compare page (optional)"):
+        show_page_comparison(link_is_elsewhere)
+
 # ----- Tab 2: CSV -----
 with tab2:
     st.write("Upload a CSV with a column named **domain**, or a text file with one domain per line.")
-    file = st.file_uploader("CSV or text file", type=["csv", "txt"])
+    file = st.file_uploader("CSV or text file", type=["csv", "txt"], key="batch_file")
     if file:
         try:
             rows, seconds = check_file(file.getvalue(), file.name, bundle)

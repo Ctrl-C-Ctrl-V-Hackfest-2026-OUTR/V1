@@ -18,6 +18,7 @@ import pandas as pd
 import detector
 from features import LEGIT_DOMAINS
 from lookalikes import ATTACK_TYPES, OUTPUT
+from outputs import check_many, speed
 
 HERE = Path(__file__).parent
 FLAGGED = ("Phishing", "Suspicious")
@@ -74,11 +75,14 @@ def main():
     ms = elapsed / len(fakes) * 1000
     print(f"\nFalse alarms on {n} real sites (popular shortcut off): rules {rule_flagged / n:.1%}, "
           f"final {flagged / n:.1%} ({phishing / n:.1%} Phishing)")
-    print(f"Speed: {ms:.1f} ms per domain ({1000 / ms:.0f} domains/second)")
+    _, batch_seconds = check_many(fakes["lookalike"].tolist(), bundle)
+    batch_ms, batch_per_second = speed(len(fakes), batch_seconds)
+    print(f"Speed, one at a time: {ms:.1f} ms per domain ({1000 / ms:.0f} domains/second)")
+    print(f"Speed, as a list:     {batch_ms:.1f} ms per domain ({batch_per_second:.0f} domains/second)")
 
     summary = {"attacks": table, "n_fakes": len(fakes),
                "false_alarms": {"count": n, "rules": rule_flagged / n, "final": flagged / n, "phishing": phishing / n},
-               "ms_per_domain": ms}
+               "ms_per_domain": ms, "batch_ms_per_domain": batch_ms, "batch_per_second": batch_per_second}
     (HERE / "evaluation.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print("Saved evaluation.json")
 

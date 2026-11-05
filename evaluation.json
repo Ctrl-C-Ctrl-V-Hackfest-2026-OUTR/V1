@@ -168,5 +168,7 @@
     "final": 0.0575,
     "phishing": 0.0045
   },
-  "ms_per_domain": 6.416776213030294
+  "ms_per_domain": 6.393840385222603,
+  "batch_ms_per_domain": 1.1355336806652043,
+  "batch_per_second": 880.6431874519058
 }
