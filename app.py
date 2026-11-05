@@ -16,14 +16,25 @@ import plotly.express as px
 import streamlit as st
 
 # Brand list, scam words, look-alike logic and ML features are shared with train.py
-from features import (BRANDS, LEGIT_DOMAINS, SUSPICIOUS_TLDS, SUSPICIOUS_WORDS,
-                      brand_match, extract_features, parse)
+from features import (BRANDS, LEGIT_DOMAINS, POPULAR_SET, SUSPICIOUS_TLDS, SUSPICIOUS_WORDS,
+                      at_imitates, before_at, brand_match, extract_features, is_free_hosted,
+                      is_trusted_bank, one_typo_brand, parse, popular_lookalike, subdomain_brand)
 
 HERE = Path(__file__).parent
+OFFICIAL_REASON = "Known official domain"
+BANK_REASON = "Verified Indian bank domain (.bank.in)"
+POPULAR_REASON = "Popular real website (top 20,000 sites)"
+POPULAR_SUB_REASON = "Subdomain of popular real website {}"
 
 
 def verdict_for(score: float) -> str:
     return "Phishing" if score >= 60 else "Suspicious" if score >= 30 else "Safe"
+
+
+def settled(url: str, domain: str, score: int, reason: str, note: str) -> dict:
+    """A result the rules are sure of. The ML model is skipped; explain() shows the note."""
+    return {"url": url, "domain": domain, "score": score, "verdict": verdict_for(score),
+            "reasons": reason, "note": note}
 
 
 def analyze(url: str) -> dict:
@@ -34,27 +45,70 @@ def analyze(url: str) -> dict:
     name = parts.domain
 
     score, reasons = 0, []
+    is_official = domain in LEGIT_DOMAINS
+    is_bank = is_trusted_bank(full_host)
+    is_popular = domain in POPULAR_SET
+    is_popular_site = is_popular and parts.subdomain in ("", "www")
+    sub_brand = subdomain_brand(parts.subdomain)
+    # A popular site's subdomains belong to the same owner (accounts.spotify.com), unless
+    # anyone can publish there (paytm-login.weebly.com) or another brand's name is in them.
+    is_same_owner = is_popular and not is_free_hosted(full_host) and not sub_brand
 
-    if domain in LEGIT_DOMAINS:
-        return {"url": url, "domain": domain, "score": 0,
-                "verdict": "Safe", "reasons": "Known official domain"}
+    # The "@" trick comes first: an address hiding part of itself never gets an instant Safe.
+    # +60 = Phishing on its own, when the hidden part pretends to be a brand.
+    hidden = before_at(url)
+    if hidden is not None:
+        at_score = 60 if at_imitates(hidden) else 40
+        at_reason = f"Uses @ to hide the real address — the browser goes to {full_host}"
+        # The host itself is one we trust, so the @ is the only thing wrong with this address
+        if is_official or is_bank or is_popular_site or is_same_owner:
+            return settled(url, domain, at_score, at_reason,
+                           f"The browser really goes to {full_host}, which we trust, but real links "
+                           "don't hide part of their address with @, so the ML model was not needed.")
+        score += at_score
+        reasons.append(at_reason)
+    elif is_official:
+        return settled(url, domain, 0, OFFICIAL_REASON,
+                       "This is a known official domain, so it is Safe and no further checks were needed.")
+    elif is_bank:
+        return settled(url, full_host, 0, BANK_REASON,
+                       "Only RBI-verified banks can register under .bank.in, so it is Safe "
+                       "and no further checks were needed.")
+    elif is_popular_site:
+        return settled(url, domain, 0, POPULAR_REASON,
+                       "This is one of the top 20,000 most popular websites, so it is Safe "
+                       "and no further checks were needed.")
+    elif is_same_owner:
+        return settled(url, domain, 0, POPULAR_SUB_REASON.format(domain),
+                       f"This is a subdomain of {domain}, a popular website, and belongs to "
+                       "the same owner, so it is Safe and the ML model was not needed.")
 
-    # 1. Look-alike brand name (typosquatting)
-    clean, best_brand, best_sim, is_homoglyph = brand_match(name)
-    if is_homoglyph:
-        score += 70
-        reasons.append(f"Fake letters copy '{clean}' (e.g. 0 for o, rn for m)")
-    elif best_sim >= 80:
-        score += 45
-        reasons.append(f"Looks like '{best_brand}' ({best_sim:.0f}% similar) but is not the real site")
+    # 1. Look-alike name (typosquatting), strongest match first
+    if not is_popular:
+        clean, best_brand, best_sim, is_homoglyph = brand_match(name)
+        typo_brand = one_typo_brand(clean)
+        if is_homoglyph:
+            score += 70
+            reasons.append(f"Fake letters copy '{clean}' (e.g. 0 for o, rn for m)")
+        elif typo_brand:
+            # +60 = Phishing on its own
+            score += 60
+            reasons.append(f"One typo away from '{typo_brand}'")
+        elif best_sim >= 80:
+            score += 45
+            reasons.append(f"Looks like '{best_brand}' ({best_sim:.0f}% similar) but is not the real site")
+        else:
+            # Only +45 (Suspicious): popular-site names cause more false alarms than our brands
+            popular_target = popular_lookalike(name)
+            if popular_target:
+                score += 45
+                reasons.append(f"One typo away from popular site '{popular_target}'")
 
     # 2. Brand name sitting in the subdomain, e.g. paytm.secure-login.xyz
     #    +45 so that "brand in subdomain" + a suspicious TLD (+15) always reaches 60 = Phishing
-    for brand in BRANDS:
-        if brand in parts.subdomain:
-            score += 45
-            reasons.append(f"Brand '{brand}' used in subdomain")
-            break
+    if sub_brand:
+        score += 45
+        reasons.append(f"Brand '{sub_brand}' used in subdomain")
 
     # 3. Cheap / abused TLD
     if parts.suffix in SUSPICIOUS_TLDS:
@@ -83,7 +137,7 @@ def analyze(url: str) -> dict:
 
     score = min(score, 100)
     return {"url": url, "domain": domain, "score": score, "verdict": verdict_for(score),
-            "reasons": "; ".join(reasons) or "No red flags found"}
+            "reasons": "; ".join(reasons) or "No red flags found", "note": None}
 
 
 def load_model():
@@ -107,8 +161,8 @@ def full_analysis(url: str, bundle) -> dict:
     r["ml_probability"] = None  # percent, 0-100
     r["decided_by"] = "Rules"
 
-    # Official domains stay Safe; no ML needed. Without a model we keep the rule score only.
-    if bundle is None or r["domain"] in LEGIT_DOMAINS:
+    # Results we are sure of stay Safe; no ML needed. Without a model we keep the rule score only.
+    if bundle is None or r["note"]:
         return r
 
     model = bundle["model"]
@@ -128,27 +182,35 @@ def full_analysis(url: str, bundle) -> dict:
 
 
 def lookalike_target(url: str):
-    """If the link imitates a known brand, return that brand's real domain, else None.
+    """If the link imitates a known brand or popular site, return the real domain, else None.
     Display helper only: it does not change any score."""
-    parts, _ = parse(url)
+    parts, full_host = parse(url)
     domain = f"{parts.domain}.{parts.suffix}" if parts.suffix else parts.domain
-    if domain in LEGIT_DOMAINS:
+    hidden = before_at(url)
+    if hidden is not None and at_imitates(hidden):  # sbi.bank.in@evil.com -> sbi.bank.in
+        return at_imitates(hidden)
+    if domain in LEGIT_DOMAINS or is_trusted_bank(full_host):
         return None
-    clean, best_brand, best_sim, is_homoglyph = brand_match(parts.domain)
-    if is_homoglyph:
-        brand = clean
-    elif best_sim >= 80:
-        brand = best_brand
-    else:
-        brand = next((b for b in BRANDS if b in parts.subdomain), None)
-    return BRANDS[brand][0] if brand else None
+    brand = None
+    is_popular = domain in POPULAR_SET
+    if not is_popular:  # same as analyze(): the name of a popular site is not a look-alike
+        clean, best_brand, best_sim, is_homoglyph = brand_match(parts.domain)
+        if is_homoglyph:
+            brand = clean
+        else:
+            brand = one_typo_brand(clean) or (best_brand if best_sim >= 80 else None)
+    if not brand:
+        brand = subdomain_brand(parts.subdomain)
+    if brand:
+        return BRANDS[brand][0]
+    return None if is_popular else popular_lookalike(parts.domain)
 
 
 def explain(r: dict, target) -> str:
     """One plain-English sentence about how the rules and the ML model contributed."""
     rule, ml, by = r["rule_score"], r["ml_probability"], r["decided_by"]
-    if r["domain"] in LEGIT_DOMAINS:
-        return "This is a known official domain, so it is Safe and no further checks were needed."
+    if r["note"]:
+        return r["note"]
     if target:
         trick = "Rules found a look-alike trick"
     elif rule >= 30:
@@ -169,7 +231,7 @@ def explain(r: dict, target) -> str:
 COLORS = {"Phishing": "#EF4444", "Suspicious": "#F59E0B", "Safe": "#22C55E"}
 ICONS = {"Phishing": "🚨", "Suspicious": "⚠️", "Safe": "✅"}
 EXAMPLES = ["paytrn.com", "sbi-kyc-update-now.top", "amazon.security-check.icu",
-            "flipkart-sale.in", "google.com"]
+            "rediit.com", "google.com"]
 # Human-readable names for the model's features (used in the importance chart)
 FEATURE_LABELS = {
     "length": "Domain length", "hyphens": "Number of hyphens", "digits": "Number of digits",
@@ -266,9 +328,10 @@ with tab1:
                     unsafe_allow_html=True)
 
         st.write("**Why:**")
-        good = ("Known official domain", "No red flags found")  # these get a tick, not a flag
-        chips = "".join(f'<span class="k-chip">{"✅" if x in good else "🚩"} {html.escape(x)}</span>'
-                        for x in r["reasons"].split("; "))
+        # Safe reasons get a tick, not a flag
+        is_good = r["verdict"] == "Safe" and r["note"]
+        chips = "".join(f'<span class="k-chip">{"✅" if is_good or x == "No red flags found" else "🚩"} '
+                        f'{html.escape(x)}</span>' for x in r["reasons"].split("; "))
         st.markdown(f"<div>{chips}</div>", unsafe_allow_html=True)
 
 # ----- Tab 2: CSV -----
@@ -313,16 +376,21 @@ with tab2:
 # ----- Tab 3: how it works -----
 with tab3:
     steps = [
-        ("1 · 📏 Rules", "Checks the link for look-alike names (paytrn → paytm), fake letters, "
-                         "brand names hidden in the subdomain, risky endings like .xyz, scam "
-                         "words and odd structure. Result: a risk score from 0 to 100."),
+        ("1 · 📏 Rules", "Official domains, verified .bank.in banks, the top 20,000 sites and their "
+                         "subdomains are Safe straight away. Everything else is checked for an @ hiding "
+                         "the real address (sbi.bank.in@evil.com), fake letters (paytrn → paytm), names "
+                         "one typo from a brand or top site (yutube → youtube), brand names used in the "
+                         "name or subdomain, risky endings like .xyz, scam words and odd structure. "
+                         "Result: a risk score from 0 to 100."),
         ("2 · 🤖 Machine learning", "A Random Forest trained on 20,000 popular sites and 20,000 real "
                                    "phishing hosts looks at 12 patterns in how the domain is built "
-                                   "and gives the % chance that it is phishing."),
+                                   "and gives the % chance that it is phishing. Free-hosting sites "
+                                   "never get the subdomain shortcut, because anyone can publish there: "
+                                   "their subdomains always get all the checks and this model."),
         ("3 · ⚖️ Final verdict", "If the ML model is at least 70% sure, the final score is the higher "
                                 "of the rule score and the average of both; otherwise the rule score "
-                                "is used. 60+ Phishing, 30-59 Suspicious, below 30 Safe. Known "
-                                "official domains are always Safe."),
+                                "is used. So ML can only raise the risk. 60+ Phishing, 30-59 Suspicious, "
+                                "below 30 Safe."),
     ]
     for col, (title, text) in zip(st.columns(3), steps):
         col.markdown(f'<div class="k-step"><h4>{title}</h4>{text}</div>', unsafe_allow_html=True)
