@@ -15,13 +15,18 @@ import streamlit as st
 
 from detector import explain, full_analysis, load_model
 from evidence import ATTACK_LABELS
-from outputs import EXPORTERS, FORMATS, check_many, flat_row, read_domains, speed, to_json
+from outputs import (EXPORTERS, FORMATS, check_many, check_messages, flat_row, read_domains,
+                     read_messages, speed, to_json)
+from sms import MESSAGE_COLUMNS, WHAT_TO_DO, check_message, flat_message_row
 from page_compare import compare_html, compare_images, conclusion
 
 HERE = Path(__file__).parent
 
 # ---------------- UI ----------------
 COLORS = {"Phishing": "#EF4444", "Suspicious": "#F59E0B", "Safe": "#22C55E"}
+# A message says "Scam" where a domain says "Phishing", but the colour and icon are the same
+VERDICT_COLORS = {"Scam": "Phishing", "Suspicious": "Suspicious", "Safe": "Safe"}
+VERDICT_ICONS = {"Scam": "\U0001F6A8", "Suspicious": "\u26A0\uFE0F", "Safe": "\u2705"}
 ICONS = {"Phishing": "🚨", "Suspicious": "⚠️", "Safe": "✅"}
 EXAMPLES = ["paytrn.com", "sbi-kyc-update-now.top", "amazon.security-check.icu",
             "rediit.com", "google.com"]
@@ -35,6 +40,16 @@ FEATURE_LABELS = {
     "homoglyph_match": "Fake-letter trick (0 for o...)",
 }
 NO_TOOLBAR = {"displayModeBar": False}  # hide the Plotly toolbar on every chart
+# Realistic examples for the message tab: a short button label -> (message, sender)
+MESSAGE_EXAMPLES = {
+    "Bank KYC": ("Dear Customer, your SBI account will be blocked today. "
+                 "Update KYC now: sbi-kyc-update.xyz", ""),
+    "Electricity": ("Your electricity connection will be disconnected tonight at 9.30 PM. "
+                    "Call 98XXXXXX21 immediately.", "9876543210"),
+    "Lottery": ("Congratulations! You won \u20b925,00,000 in KBC lottery. Claim at bit.ly/kbc-win", ""),
+    "Parcel": ("Your parcel is held at customs. Pay \u20b949 fee: indiapost-delivery.top", ""),
+    "Genuine OTP": ("Your OTP for login is 482913. Do not share it with anyone. -HDFC Bank", "AD-HDFCBK"),
+}
 
 st.set_page_config(page_title="Kavach", page_icon="🛡️", layout="centered")
 
@@ -62,6 +77,13 @@ st.markdown("""<style>
 .k-missing {color: #D1D5DB; background: #6B728055; border-radius: 3px; padding: 0 1px;
             text-decoration: line-through; text-decoration-thickness: 2px;}
 .k-ev-edits {margin: 12px 0 0 0; padding-left: 18px; font-size: .9rem;}
+.k-msg {background: #111827; border: 1px solid #243041; border-radius: 14px; padding: 16px 20px;
+        margin: 4px 0 14px 0; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere;}
+.k-mark {background: #EF444433; color: #FCA5A5; border-bottom: 2px solid #EF4444;
+         border-radius: 3px; padding: 1px 2px;}
+.k-todo {border: 1px solid #F59E0B; background: #F59E0B14; border-radius: 12px; padding: 14px 20px; margin: 10px 0;}
+.k-todo ul {margin: 8px 0 0 0; padding-left: 20px;}
+.k-todo li {margin-bottom: 5px;}
 </style>""", unsafe_allow_html=True)
 
 
@@ -97,6 +119,11 @@ def evidence_box(ev: dict) -> str:
 def check_file(data: bytes, filename: str, _bundle) -> tuple:
     """Check an uploaded file once, so pressing a download button doesn't check it all again."""
     return check_many(read_domains(data, filename), _bundle)
+
+
+@st.cache_data(max_entries=5, show_spinner="Checking messages...")
+def check_message_file(data: bytes, filename: str, _bundle) -> tuple:
+    return check_messages(read_messages(data, filename), _bundle)
 
 
 def show_page_comparison(domain_differs):
@@ -150,6 +177,24 @@ def show_page_comparison(domain_differs):
                     f"Structural similarity {visual['structural_similarity']}%")
 
 
+def highlight_message(text: str, spans: list) -> str:
+    """The message with the risky words marked. Every piece is escaped, so pasted HTML is safe."""
+    pieces, last = [], 0
+    for start, end in spans:
+        pieces.append(html.escape(text[last:start]))
+        pieces.append(f'<span class="k-mark">{html.escape(text[start:end])}</span>')
+        last = end
+    pieces.append(html.escape(text[last:]))
+    return f'<div class="k-msg">{"".join(pieces)}</div>'
+
+
+def use_message(key: str):
+    """Button callback: put an example message (and its sender) in the boxes."""
+    text, sender = MESSAGE_EXAMPLES[key]
+    st.session_state["msg_input"] = text
+    st.session_state["sender_input"] = sender
+
+
 def use_example(domain: str):
     """Button callback: put the example in the input box (the check runs on the rerun)."""
     st.session_state["link_input"] = domain
@@ -165,7 +210,8 @@ if bundle is None:
     st.warning("ML model not found, so only the rule-based score is shown. "
                "Run `python train.py` once to create model.joblib.")
 
-tab1, tab2, tab3 = st.tabs(["Check a link", "Check a list (CSV)", "How it works"])
+tab1, tab_msg, tab2, tab3 = st.tabs(["Check a link", "Check a message",
+                                     "Check a list (CSV)", "How it works"])
 
 # ----- Tab 1: one link -----
 with tab1:
@@ -231,6 +277,103 @@ with tab1:
     link_is_elsewhere = not r["evidence"]["is_genuine"] if url.strip() else None
     with st.expander("Compare page (optional)"):
         show_page_comparison(link_is_elsewhere)
+
+# ----- Check a message (SMS, WhatsApp or email) -----
+with tab_msg:
+    st.write("Paste an SMS, WhatsApp or email message. Kavach checks every link in it "
+             "and the wording, all offline.")
+    for col, key in zip(st.columns(len(MESSAGE_EXAMPLES)), MESSAGE_EXAMPLES):
+        col.button(key, key=f"msg_{key}", on_click=use_message, args=(key,), width="stretch")
+
+    message = st.text_area("The message", key="msg_input", height=120,
+                           placeholder="Dear Customer, your account will be blocked today...")
+    sender = st.text_input("Sender (optional)", key="sender_input",
+                           placeholder="e.g. AD-SBIBNK or 9876543210",
+                           help="An Indian company SMS comes from a registered header like AD-SBIBNK, "
+                                "not a personal mobile number. This is a soft hint: a sender is easy to fake.")
+
+    if message.strip():
+        m = check_message(message, sender, bundle)
+        color, icon = COLORS[VERDICT_COLORS[m["verdict"]]], VERDICT_ICONS[m["verdict"]]
+
+        st.markdown(
+            f'<div class="k-card" style="background:{color}1A;border-color:{color}">'
+            f'<div class="k-verdict" style="color:{color}">{icon} {m["verdict"]}</div>'
+            f'<div class="k-score">Message risk score <b>{m["score"]}/100</b></div>'
+            f'<div class="k-bar"><div style="width:{m["score"]}%;background:{color}"></div></div>'
+            f'</div>', unsafe_allow_html=True)
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Wording score", f"{m['text_score']}/100",
+                  help="How much the words themselves look like a scam.")
+        c2.metric("Worst link score", f"{m['link_score']}/100",
+                  help="The highest risk score of any link in the message, from the same checks "
+                       "as the Check a link tab.")
+        c3.metric("Links found", len(m["links"]))
+        st.markdown(f'<div class="k-explain">\U0001F4A1 {html.escape(m["explanation"])}</div>',
+                    unsafe_allow_html=True)
+
+        st.subheader("The message, with the risky parts marked", anchor=False)
+        st.markdown(highlight_message(m["text"], m["spans"]), unsafe_allow_html=True)
+
+        if m["links"]:
+            st.subheader("Links found in this message", anchor=False)
+            link_rows = []
+            for link in m["links"]:
+                evidence = link["result"]["evidence"]
+                link_rows.append({"link": link["host"], "verdict": link["verdict"],
+                                  "score": link["score"],
+                                  "nearest genuine": evidence["nearest_genuine"] or "",
+                                  "closeness %": evidence["closeness"],
+                                  "why": "; ".join(evidence["edits"]) or link["result"]["reasons"]})
+            st.dataframe(pd.DataFrame(link_rows), width="stretch", hide_index=True)
+            st.caption("Each link is checked with exactly the same rules and model as the "
+                       "Check a link tab.")
+
+        st.write("**Why:**")
+        chips = "".join(f'<span class="k-chip">{"\u2705" if m["verdict"] == "Safe" else "\U0001F6A9"} '
+                        f'{html.escape(reason)}</span>' for reason in m["reasons"])
+        st.markdown(f"<div>{chips}</div>", unsafe_allow_html=True)
+
+        if m["sender_check"]["reason"]:
+            st.caption(f"Sender: {m['sender_check']['reason']}")
+
+        if m["verdict"] != "Safe":
+            steps = "".join(f"<li>{html.escape(step)}</li>" for step in WHAT_TO_DO)
+            st.markdown(f'<div class="k-todo"><b>What to do</b><ul>{steps}</ul></div>',
+                        unsafe_allow_html=True)
+
+        result_json = to_json(flat_message_row(m), MESSAGE_COLUMNS).decode("utf-8")
+        with st.expander("Copy or download this result as JSON"):
+            st.code(result_json, language="json")
+            st.download_button("Download JSON", result_json, "kavach_message.json",
+                               "application/json", on_click="ignore")
+
+    with st.expander("Check many messages from a CSV"):
+        st.write("Upload a CSV with a **message** column (and an optional **sender** column), "
+                 "or a text file with one message per line.")
+        msg_file = st.file_uploader("CSV or text file", type=["csv", "txt"], key="msg_file")
+        if msg_file:
+            try:
+                msg_rows, msg_seconds = check_message_file(msg_file.getvalue(), msg_file.name, bundle)
+            except ValueError as err:
+                st.error(str(err))
+            else:
+                ms, per_second = speed(len(msg_rows), msg_seconds)
+                s1, s2 = st.columns(2)
+                s1.metric("Messages checked", f"{len(msg_rows):,}")
+                s2.metric("Time per message", f"{ms:.1f} ms")
+                st.dataframe(pd.DataFrame(msg_rows)[MESSAGE_COLUMNS], width="stretch", hide_index=True)
+                for col, fmt in zip(st.columns(3), EXPORTERS):
+                    mime, filename = FORMATS[fmt]
+                    try:
+                        col.download_button(f"Download {fmt.upper()}",
+                                            EXPORTERS[fmt](msg_rows, MESSAGE_COLUMNS),
+                                            f"kavach_messages.{fmt}", mime,
+                                            on_click="ignore", width="stretch")
+                    except ImportError:  # Excel export needs openpyxl
+                        col.caption(f"{fmt.upper()} needs one more package. "
+                                    "Run: pip install -r requirements.txt")
 
 # ----- Tab 2: CSV -----
 with tab2:
@@ -306,6 +449,32 @@ with tab3:
     ]
     for col, (title, text) in zip(st.columns(3), steps):
         col.markdown(f'<div class="k-step"><h4>{title}</h4>{text}</div>', unsafe_allow_html=True)
+
+    st.subheader("Checking a whole message", anchor=False)
+    st.write("The **Check a message** tab takes a pasted SMS, WhatsApp or email message and does "
+             "two things: it pulls out every link and runs it through exactly the checks above, "
+             "and it reads the wording for scam patterns. The final score is the higher of the two, "
+             "plus a little when both are bad at once.")
+    message_steps = [
+        ("\U0001F517 Links, however they are hidden",
+         "Scammers break links so they are not clickable: hxxp://, sbi-kyc[.]xyz, \"sbi dot xyz\", "
+         "or a space before the dot. Kavach undoes all of these, then scores each link. "
+         "A shortened link (bit.ly) cannot be expanded offline, so it is flagged for hiding "
+         "where it really goes."),
+        ("\U0001F4AC Scam wording",
+         "Asking for an OTP or PIN (which no real bank does), urgency and threats, KYC and "
+         "Aadhaar demands, prizes and lotteries, parcel and electricity stories, easy-money job "
+         "offers, a mobile number to call, a UPI ID to pay, and Hinglish wording like "
+         "\"band ho jayega\" or \"turant\"."),
+        ("\U0001F3E6 Who it claims to be",
+         "If the words name a brand (SBI, Paytm, Amazon) but the link is not that brand's real "
+         "site, that is a strong signal. The sender is a softer hint: Indian companies send from "
+         "a registered header like AD-SBIBNK, not a personal mobile number."),
+    ]
+    for col, (title, text) in zip(st.columns(3), message_steps):
+        col.markdown(f'<div class="k-step"><h4>{title}</h4>{text}</div>', unsafe_allow_html=True)
+    st.caption("A genuine OTP message (\"Your OTP is 482913, do not share it\") stays Safe, because "
+               "only a request for an OTP counts, never a message that gives you one.")
 
     st.subheader("The three scores", anchor=False)
     scores = [

@@ -2,7 +2,9 @@
 
 **Spot fake bank and shopping sites before you click.**
 
-Kavach is an offline phishing-domain detector built for Hackfest 2026 (Cybersecurity & Digital Trust, problem statement PS-08). Paste a link or upload a list of domains and Kavach tells you whether each one is **Safe**, **Suspicious** or **Phishing**, with a risk score from 0 to 100 and the reasons behind it. It is aimed at look-alike domains that imitate Indian banks, UPI apps and popular shopping sites, such as `paytrn.com` (pretending to be `paytm.com`) or `sbi-kyc-update-now.top`.
+Kavach is an offline phishing-domain and SMS-scam detector built for Hackfest 2026 (Cybersecurity & Digital Trust, problem statement PS-08). Paste a link or upload a list of domains and Kavach tells you whether each one is **Safe**, **Suspicious** or **Phishing**, with a risk score from 0 to 100 and the reasons behind it. It is aimed at look-alike domains that imitate Indian banks, UPI apps and popular shopping sites, such as `paytrn.com` (pretending to be `paytm.com`) or `sbi-kyc-update-now.top`.
+
+You can also paste a whole SMS, WhatsApp or email message: Kavach pulls out every link, checks each one, reads the wording for scam patterns and gives one verdict.
 
 It works fully offline: no WHOIS, no online lookups, no API calls. Everything runs on your machine.
 
@@ -103,6 +105,62 @@ Examples:
 | `sbi.bank.in` | 0 | n/a | 0 | Safe |
 | `accounts.spotify.com` | 0 | n/a | 0 | Safe |
 
+## Checking a whole message
+
+The **Check a message** tab takes a pasted message and an optional sender. It scores two things and takes the higher, with a small bonus when both are bad:
+
+**1. Every link in the message** goes through all the domain checks above. Scammers break links so they are not clickable, and Kavach undoes each trick before checking:
+
+| Written as | Read as |
+|---|---|
+| `hxxp://evil.com` | `evil.com` |
+| `sbi-kyc[.]xyz`, `sbi-kyc(.)xyz` | `sbi-kyc.xyz` |
+| `sbi dot xyz` | `sbi.xyz` |
+| `paytm-kyc . top` | `paytm-kyc.top` |
+| `(sbi-kyc.xyz).` | `sbi-kyc.xyz` |
+
+A space *before* the dot is the giveaway, because ordinary writing never puts one there. That is why "your account will be blocked today. Update KYC" is not read as a link to `today.Update`, and `at 9.30 PM`, `Rs 25,00,000` and `ram@gmail.com` are left alone.
+
+A shortened link (`bit.ly`, `tinyurl.com`, `cutt.ly`, `is.gd`, `t.ly`, `rb.gy`, `shorturl.at`, `goo.gl`) cannot be expanded offline, so it is flagged: **"Shortened link hides the real address"**.
+
+**2. The wording**, with points capped so no single phrase decides the verdict:
+
+| Signal | Points |
+|---|---|
+| Asks you to share an OTP, PIN, CVV or password | +40 |
+| Promises a prize, lottery win, cashback or refund | +30 |
+| Offers work from home or daily earnings | +30 |
+| The words name a brand but the link is not that brand's site | +30 |
+| Asks you to pay a UPI ID directly | +30 |
+| Asks you to update KYC, PAN or Aadhaar | +20 |
+| Pushes you to act immediately, or threatens to block your account | +20 |
+| Claims a parcel, customs or electricity problem | +20 |
+| Tells you to call a personal mobile number | +20 |
+| A shortened link | +20 |
+| Links to a chat account (`wa.me`, `t.me`) instead of a website | +15 |
+| Sent from a mobile number while claiming to be a brand (soft hint) | +15 |
+
+A signal that matches two or more different wordings counts for half as much again. Hinglish is covered where it is common (`band ho jayega`, `turant`, `OTP batao`, `inaam`).
+
+**Genuine messages stay Safe.** Only a *request* for an OTP counts, never a message that gives you one, so "Your OTP for login is 482913. Do not share it with anyone. -HDFC Bank" scores 0. The same goes for transaction alerts ("Rs 500 debited from A/c XX1234... -SBI") and delivery updates that link to `amazon.in`.
+
+**60 or more = Scam, 30 to 59 = Suspicious, below 30 = Safe**, the same thresholds as the link checks. Anything not Safe shows a "What to do" box: don't click, never share an OTP or PIN, call **1930** or report at **cybercrime.gov.in** if money is already gone, and forward spam SMS to **1909**.
+
+Examples:
+
+| Message | Verdict | Score |
+|---|---|---|
+| `Dear Customer, your SBI account will be blocked today. Update KYC now: sbi-kyc-update.xyz` | Scam | 100 |
+| `Your electricity connection will be disconnected tonight at 9.30 PM. Call 98XXXXXX21 immediately.` | Scam | 70 |
+| `Your parcel is held at customs. Pay ₹49 fee: indiapost-delivery.top` | Scam | 78 |
+| `Congratulations! You won ₹25,00,000 in KBC lottery. Claim at bit.ly/kbc-win` | Scam | 80 |
+| `Aapka SBI account band ho jayega. Turant KYC update kare: sbi-verify.top` | Scam | 100 |
+| `Pay ₹10 to confirm delivery: scammer@ybl` | Suspicious | 30 |
+| `Your OTP for login is 482913. Do not share it with anyone. -HDFC Bank` | Safe | 0 |
+| `Rs 500 debited from A/c XX1234 on 05-11-26 to AMAZON. Not you? Call 18001234567 -SBI` | Safe | 0 |
+
+**Sender check.** An Indian company SMS arrives from a registered DLT header: two letters for the operator and circle, then the brand's short name, such as `AD-SBIBNK` or `VM-HDFCBK`. Since May 2025 operators also add a category letter: `-P` promotional, `-S` service, `-T` transactional, `-G` government, as in `AD-SBIBNK-S`. A personal mobile number claiming to be a bank is a red flag. This stays a **soft** signal worth few points, because a sender is easy to fake, people paste it inconsistently, and plenty of genuine messages use other formats.
+
 ## Model metrics
 
 Measured on **43,805 hosts** held out from training (80/20 split that keeps all hosts of one site together, so these are sites the model never saw):
@@ -190,6 +248,13 @@ python kavach_cli.py sample_domains.csv --format json --out results.json
 python kavach_cli.py domains.txt --format xlsx --out results.xlsx
 ```
 
+For messages, use a CSV with a `message` column (and an optional `sender` column). The mode is picked from the columns, or you can say so:
+
+```bat
+python kavach_cli.py messages.csv
+python kavach_cli.py messages.csv --mode messages --format xlsx --out results.xlsx
+```
+
 Each export has these columns: domain, verdict, final score, ML probability, nearest genuine site, closeness %, attack type, evidence, reasons, rule score and what decided it.
 
 ### Compare a page (optional)
@@ -211,6 +276,8 @@ One command runs everything, in about 30 seconds. It prints a table per section,
 | Links | The expected verdict for each test link |
 | Evidence | Nearest genuine site, closeness %, attack type, the exact edits and the reason text |
 | Exports and command-line tool | CSV, JSON and Excel columns, formula-safe cells, and `kavach_cli.py` run for real |
+| Messages | The expected verdict for each test message, genuine ones included |
+| Message details | Link extraction, the genuine-OTP guard, the sender check and message exports |
 | Page comparison | Saved HTML and screenshot similarity, on pages made up inside the test |
 | App (headless) | The real `app.py` driven by Streamlit's test tool: verdict card, evidence box, downloads and error messages |
 
@@ -238,6 +305,7 @@ The first run downloads PhiUSIIL into `data/` (needs internet once, about 15 MB)
 | `app.py` | Streamlit app: the user interface |
 | `detector.py` | Detection logic: rule-based score and ML blend |
 | `evidence.py` | Similarity evidence: closeness, attack type and exact edits |
+| `sms.py` | Message checking: link extraction, scam wording and the sender check |
 | `outputs.py` | Fast list checking and CSV, JSON and Excel export |
 | `kavach_cli.py` | Command-line tool |
 | `page_compare.py` | Optional comparison of saved pages and screenshots |

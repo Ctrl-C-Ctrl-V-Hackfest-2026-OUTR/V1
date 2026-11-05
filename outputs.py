@@ -11,6 +11,7 @@ import pandas as pd
 
 from detector import full_analysis
 from features import extract_features
+from sms import MESSAGE_COLUMNS, check_message, flat_message_row
 
 # The columns of every export, in order
 COLUMNS = ["domain", "verdict", "final_score", "ml_probability", "nearest_genuine", "closeness_percent",
@@ -38,6 +39,33 @@ def read_domains(data: bytes, filename: str) -> list:
     if not domains:
         raise ValueError("No domains found in this file.")
     return domains
+
+
+def read_messages(data: bytes, filename: str) -> list:
+    """Messages from a CSV with a 'message' column, or a text file with one message per line."""
+    if filename.lower().endswith(".csv"):
+        try:
+            df = pd.read_csv(io.BytesIO(data), dtype=str, encoding="utf-8-sig")
+        except (ValueError, pd.errors.ParserError, pd.errors.EmptyDataError) as err:
+            raise ValueError(f"Could not read this CSV file: {err}") from err
+        if "message" not in df.columns:
+            raise ValueError("Could not find a column named 'message' in this CSV.")
+        rows = df["message"].dropna().astype(str).tolist()
+        senders = df["sender"].fillna("").astype(str).tolist() if "sender" in df.columns else [""] * len(rows)
+    else:
+        rows = data.decode("utf-8-sig", errors="replace").splitlines()
+        senders = [""] * len(rows)
+    pairs = [(m.strip(), s.strip()) for m, s in zip(rows, senders) if m.strip()]
+    if not pairs:
+        raise ValueError("No messages found in this file.")
+    return pairs
+
+
+def check_messages(pairs: list, bundle) -> tuple:
+    """Check a list of (message, sender). Returns (rows, seconds taken)."""
+    started = time.perf_counter()
+    rows = [flat_message_row(check_message(text, sender, bundle)) for text, sender in pairs]
+    return rows, time.perf_counter() - started
 
 
 def flat_row(r: dict) -> dict:
@@ -77,25 +105,26 @@ def _safe_cell(value):
     return value
 
 
-def _safe_table(rows: list) -> pd.DataFrame:
-    table = pd.DataFrame(rows, columns=COLUMNS)
+def _safe_table(rows: list, columns=None) -> pd.DataFrame:
+    table = pd.DataFrame(rows, columns=columns or COLUMNS)
     for column in table.columns:
         table[column] = table[column].map(_safe_cell)
     return table
 
 
-def to_csv(rows: list) -> bytes:
-    return _safe_table(rows).to_csv(index=False).encode("utf-8-sig")  # the BOM lets Excel read Cyrillic
+def to_csv(rows: list, columns=None) -> bytes:
+    # the BOM lets Excel read Cyrillic
+    return _safe_table(rows, columns).to_csv(index=False).encode("utf-8-sig")
 
 
-def to_json(rows: list) -> bytes:
+def to_json(rows: list, columns=None) -> bytes:
     return json.dumps(rows, indent=2, ensure_ascii=False, default=float).encode("utf-8")
 
 
-def to_xlsx(rows: list) -> bytes:
+def to_xlsx(rows: list, columns=None) -> bytes:
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        _safe_table(rows).to_excel(writer, index=False, sheet_name="Kavach results")
+        _safe_table(rows, columns).to_excel(writer, index=False, sheet_name="Kavach results")
         sheet = writer.sheets["Kavach results"]
         sheet.freeze_panes = "A2"
         for cells in sheet.columns:  # wide enough to read, without one long cell taking over

@@ -15,6 +15,7 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -24,6 +25,7 @@ from PIL import Image, ImageDraw, ImageFilter
 import detector
 import outputs
 import page_compare
+import sms
 from lookalikes import variants
 
 HERE = Path(__file__).parent
@@ -189,10 +191,49 @@ LINK_CASES = [
     ("office.biz", "Safe"),
 ]
 
-# When the SMS feature lands:
-#   1. add MESSAGE_CASES = [("Your KYC expires, verify at sbi-kyc.top", "Phishing"), ...] here
-#   2. write check_message(text, bundle), which returns (verdict, score) like check_link() below
-#   3. in main(), add: run_cases("Messages", MESSAGE_CASES, check_message, bundle)
+# (message, expected verdict) or (message, sender, expected verdict).
+# Scam / Suspicious / Safe, the same thresholds as the link verdicts.
+MESSAGE_CASES = [
+    # --- scams: a dangerous link plus scam wording ---
+    ("Dear Customer, your SBI account will be blocked today. Update KYC now: sbi-kyc-update.xyz", "Scam"),
+    ("Your parcel is held at customs. Pay \u20b949 fee: indiapost-delivery.top", "Scam"),
+    ("Aapka SBI account band ho jayega. Turant KYC update kare: sbi-verify.top", "Scam"),
+    ("URGENT: Your account is suspended. Verify at hxxps://sbi-kyc[.]xyz/login", "Scam"),
+    ("Click here: paytm-kyc . top to update your details", "Scam"),
+    ("Your Aadhaar will be deactivated today. Re-verify immediately: uidai-verify.top", "Scam"),
+
+    # --- scams with no dangerous link: the wording alone carries it ---
+    ("Your electricity connection will be disconnected tonight at 9.30 PM. "
+     "Call 98XXXXXX21 immediately.", "Scam"),
+    ("Dear user, share the OTP received on your phone to complete KYC verification.",
+     "9876543210", "Scam"),
+    ("Enter your UPI PIN to receive \u20b95000 cashback in your account.", "Scam"),
+
+    # --- bait plus a link to click ---
+    ("Congratulations! You won \u20b925,00,000 in KBC lottery. Claim at bit.ly/kbc-win", "Scam"),
+    ("Work from home! Earn \u20b95000 daily by liking YouTube videos. "
+     "Join our telegram: t.me/earnfast", "Scam"),
+    # No link and no number to call, so the wording is all the rules have: Suspicious, not Scam
+    ("Complete daily task and earn \u20b92000 per day. Join our telegram group now.", "Suspicious"),
+
+    # --- suspicious, but not proof on its own ---
+    ("Pay \u20b910 to confirm delivery: scammer@ybl", "Suspicious"),
+    ("Hey, check out this offer: bit.ly/abcdef", "Suspicious"),
+
+    # --- genuine messages that must NOT be flagged ---
+    ("Your OTP for login is 482913. Do not share it with anyone. -HDFC Bank", "AD-HDFCBK", "Safe"),
+    ("123456 is your one-time password. Never share it with anyone, including bank staff.",
+     "VM-ICICIB-T", "Safe"),
+    ("Rs 500 debited from A/c XX1234 on 05-11-26 to AMAZON. Not you? Call 18001234567 -SBI",
+     "VM-SBIBNK", "Safe"),
+    ("Your SBI A/c XX1234 is credited with Rs 25,000 on 05-11-26. -SBI", "AD-SBIBNK-T", "Safe"),
+    ("Your Amazon order has shipped. Track it at amazon.in/orders", "AX-AMAZON-S", "Safe"),
+    ("Your Flipkart order will be delivered today. Track it at flipkart.com/orders", "Safe"),
+    ("Your Jio recharge of Rs 299 is successful. Validity till 05-12-2026. -JioCare",
+     "JD-JIOCAR-T", "Safe"),
+    ("Your train PNR 1234567890 is confirmed, coach B4 seat 31. -IRCTC", "Safe"),
+    ("Team lunch is at 1pm today. Don't be late!", "Safe"),
+]
 
 # link, nearest genuine, closeness %, edit distance, attack type, text that must be in the edits
 EVIDENCE_CASES = [
@@ -424,6 +465,94 @@ def check_pages(bundle):
         yield f"conclusion {args}", got == level, got
 
 
+def check_sms(bundle):
+    """Link extraction, the genuine-OTP guard, the sender check and the message exports."""
+    # Links must be found even when they are deliberately broken up
+    for text, want in [("go to sbi-kyc[.]xyz now", ["sbi-kyc.xyz"]),
+                       ("hxxp://evil.com/a", ["evil.com"]),
+                       ("hxxps://sbi-kyc[.]xyz/login", ["sbi-kyc.xyz"]),
+                       ("visit sbi dot xyz", ["sbi.xyz"]),
+                       ("paytm-kyc . top", ["paytm-kyc.top"]),
+                       ("www.google.com.", ["google.com"]),
+                       ("(sbi-kyc.xyz)", ["sbi-kyc.xyz"]),
+                       ("two links: a.com and b.in", ["a.com", "b.in"])]:
+        got = [link["host"] for link in sms.find_links(text)]
+        yield f"finds link: {text}", got == want, str(got)
+
+    # ...and ordinary writing must not be turned into a link
+    for text in ["blocked today. Update now", "Pay now. In 24 hours", "amount 25,00,000 rupees",
+                 "at 9.30 PM", "email me at ram@gmail.com", "A/c XX1234 on 05-11-26", "Rs 49 fee"]:
+        got = [link["host"] for link in sms.find_links(text)]
+        yield f"no false link: {text}", got == [], str(got)
+
+    # A genuine OTP tells you a code; a scam asks for one
+    for text, is_request in [("Your OTP is 482913. Do not share it with anyone.", False),
+                             ("123456 is your one-time password. Never share it.", False),
+                             ("Please share the OTP sent to your phone", True),
+                             ("Send me the otp fast", True),
+                             ("Enter your UPI PIN to receive the refund", True),
+                             ("OTP batao", True)]:
+        fired = "otp_request" in sms.check_message(text, "", bundle)["signals"]
+        yield f"OTP {'request' if is_request else 'notice'}: {text[:36]}", fired == is_request, f"fired={fired}"
+
+    # The sender check knows a company header from a personal number
+    for sender, kind in [("AD-SBIBNK", "header"), ("VM-HDFCBK", "header"), ("AX-AMAZON-S", "header"),
+                         ("JD-JIOCAR-T", "header"), ("9876543210", "mobile_claiming_brand"),
+                         ("+919876543210", "mobile_claiming_brand"), ("", "unknown")]:
+        got = sms.check_sender(sender, "Your SBI account will be blocked")["kind"]
+        yield f"sender {sender or '(blank)'}", got == kind, got
+    yield ("sender: a plain mobile with no brand named",
+           sms.check_sender("9876543210", "lunch at 1pm")["kind"] == "mobile", "")
+
+    # A brand name inside the link must not count as the message claiming that brand
+    only_link = sms.check_message("Verify at hxxps://sbi-kyc[.]xyz/login", "", bundle)
+    yield "brand inside a link doesn't count", only_link["brands_named"] == [], str(only_link["brands_named"])
+    in_words = sms.check_message("Your SBI account is blocked: sbi-kyc.xyz", "", bundle)
+    yield "brand in the words does count", [b for b, _ in in_words["brands_named"]] == ["sbi"], ""
+
+    # Highlight ranges must line up with the text and must not overlap
+    r = sms.check_message("Your SBI account will be blocked today. Update KYC now: sbi-kyc.xyz", "", bundle)
+    spans, text = r["spans"], r["text"]
+    ordered = all(a[1] <= b[0] for a, b in zip(spans, spans[1:]))
+    inside = all(0 <= a < b <= len(text) for a, b in spans)
+    yield "highlight ranges are tidy", ordered and inside and bool(spans), f"{len(spans)} ranges"
+    yield "highlight marks real words", "KYC" in " ".join(text[a:b] for a, b in spans), ""
+
+    # A shortener is a red flag even though we cannot expand it offline
+    short = sms.check_message("Claim here: bit.ly/x", "", bundle)
+    yield "shortener flagged", any("Shortened link" in reason for reason in short["reasons"]), ""
+
+    # Exports
+    pairs = outputs.read_messages(b"message,sender\nYou won! bit.ly/x,\nHi there,AD-TEST\n", "m.csv")
+    yield "reads a message CSV", pairs == [("You won! bit.ly/x", ""), ("Hi there", "AD-TEST")], str(pairs)
+    rows, _ = outputs.check_messages(pairs, bundle)
+    yield "message rows have every column", all(list(row) == sms.MESSAGE_COLUMNS for row in rows), ""
+    csv_text = outputs.to_csv(rows, sms.MESSAGE_COLUMNS).decode("utf-8-sig")
+    yield "message CSV exports", csv_text.startswith("message,sender,verdict"), csv_text.split("\n")[0][:44]
+    parsed = json.loads(outputs.to_json(rows, sms.MESSAGE_COLUMNS))
+    yield "message JSON exports", len(parsed) == 2 and parsed[0]["verdict"] == "Scam", str(
+        [row["verdict"] for row in parsed])
+    try:
+        outputs.read_messages(b"text\nhello\n", "bad.csv")
+        yield "clear error for a CSV with no message column", False, "no error raised"
+    except ValueError as err:
+        yield "clear error for a CSV with no message column", "message" in str(err), str(err)[:46]
+
+    # The command-line tool in message mode
+    with tempfile.TemporaryDirectory() as folder:
+        folder = Path(folder)
+        (folder / "msgs.csv").write_text("message,sender\nYou won! Claim at bit.ly/x,\n", encoding="utf-8")
+        done = subprocess.run([sys.executable, str(HERE / "kavach_cli.py"), "msgs.csv", "--format", "csv"],
+                              capture_output=True, text=True, cwd=folder)
+        written = folder / "msgs_results.csv"
+        out = written.read_text(encoding="utf-8-sig") if written.exists() else ""
+        yield "CLI auto-detects messages", done.returncode == 0 and "message,sender,verdict" in out, done.stdout.split("\n")[0][:50]
+
+    yield "sms.py does not load Streamlit", subprocess.run(
+        [sys.executable, "-c", "import sys, sms; print('streamlit' in sys.modules)"],
+        capture_output=True, text=True, cwd=HERE).stdout.strip() == "False", ""
+
+
 def check_ui(bundle):
     """The real app.py, run by Streamlit's own test tool without a browser. This doesn't check how
     it looks: colours and layout are in the manual checks in the README."""
@@ -438,7 +567,7 @@ def check_ui(bundle):
     app = fresh()
     yield "app starts", not app.exception, ""
     labels = [b.label for b in app.button]
-    yield "example buttons", labels == ["paytrn.com", "sbi-kyc-update-now.top", "amazon.security-check.icu", "rediit.com", "google.com"], str(labels)[:60]
+    yield "example buttons", labels[:5] == ["paytrn.com", "sbi-kyc-update-now.top", "amazon.security-check.icu", "rediit.com", "google.com"], str(labels[:5])[:60]
 
     # link, words on the page, closeness, final risk score (None = not checked)
     for link, words, close, final in (
@@ -477,6 +606,43 @@ def check_ui(bundle):
     yield "How it works sections", wanted <= headings, str(sorted(wanted - headings))
     yield "How it works: data and CLI", "PhiUSIIL" in page_text(app) and any("kavach_cli.py" in c.value for c in app.code), ""
 
+    # ----- the message tab -----
+    app = fresh()
+    yield "message tab exists", [t.label for t in app.tabs][:4] == [
+        "Check a link", "Check a message", "Check a list (CSV)", "How it works"], str([t.label for t in app.tabs])
+    labels = [b.label for b in app.button]
+    yield "message example buttons", {"Bank KYC", "Electricity", "Lottery", "Parcel", "Genuine OTP"} <= set(labels), ""
+
+    app.text_area(key="msg_input").set_value(
+        "Dear Customer, your SBI account will be blocked today. Update KYC now: sbi-kyc-update.xyz").run()
+    body = page_text(app).split("</style>")[-1]
+    metrics = {m.label: m.value for m in app.metric}
+    yield "message: no error", not app.exception, ""
+    yield "message: verdict is Scam", "Scam" in body, ""
+    yield "message: three scores", {"Wording score", "Worst link score", "Links found"} <= set(metrics), str(
+        [metrics.get(k) for k in ("Wording score", "Worst link score", "Links found")])
+    yield "message: risky words marked", '<span class="k-mark">' in body, ""
+    yield "message: what to do box", "1930" in body and "1909" in body and "cybercrime.gov.in" in body, ""
+    headings = {h.value for h in app.subheader}
+    yield "message: links table", "Links found in this message" in headings and len(app.dataframe) >= 1, ""
+    yield "message: result as JSON", any('"verdict"' in c.value for c in app.code), ""
+
+    app.text_area(key="msg_input").set_value(
+        "Your OTP for login is 482913. Do not share it with anyone. -HDFC Bank").run()
+    body = page_text(app).split("</style>")[-1]
+    yield "genuine OTP message is Safe", "Safe" in body and "1930" not in body, ""
+
+    app.text_area(key="msg_input").set_value("<script>alert(1)</script> <b>x</b> sbi-kyc.xyz").run()
+    body = page_text(app).split("</style>")[-1]
+    yield "pasted HTML in a message is escaped", not app.exception and "<script>" not in body and "&lt;script&gt;" in body, ""
+
+    app = fresh()
+    app.file_uploader(key="msg_file").upload(
+        "m.csv", b"message,sender\nYou won! bit.ly/x,\nYour OTP is 1234. Do not share it.,AD-HDFCBK\n", "text/csv").run()
+    metrics = {m.label: m.value for m in app.metric}
+    yield "message batch", not app.exception and metrics.get("Messages checked") == "2", str(metrics.get("Messages checked"))
+    yield "message batch downloads", len([b for b in app.get("download_button")]) >= 3, ""
+
     app = fresh()
     app.file_uploader(key="batch_file").upload("sample_domains.csv", (HERE / "sample_domains.csv").read_bytes(), "text/csv").run()
     metrics = {m.label: m.value for m in app.metric}
@@ -512,26 +678,40 @@ def check_ui(bundle):
 
 # ---------------- running and printing ----------------
 
+def check_message_case(case, bundle) -> tuple:
+    """Returns (verdict, score) for one message. The case is the message, or (message, sender)."""
+    text, sender = case if isinstance(case, tuple) else (case, "")
+    result = sms.check_message(text, sender, bundle)
+    return result["verdict"], result["score"]
+
+
 def check_link(link: str, bundle) -> tuple:
     """Returns (verdict, score) for one link."""
     result = detector.full_analysis(link, bundle)
     return result["verdict"], result["score"]
 
 
-def run_cases(title: str, cases: list, check, bundle) -> tuple:
-    """Print a table of (input, expected) cases. Returns (passed, total)."""
-    width = max(len(ascii(case[0])) for case in cases)
+def run_cases(title: str, cases: list, check, bundle, limit: int = 0) -> tuple:
+    """Print a table of cases. Each is (input, expected), or (input, extra, expected) when the
+    check needs a second value, such as a message and its sender. Returns (passed, total)."""
+    prepared = [((case[0], case[1]) if len(case) == 3 else case[0], case[-1]) for case in cases]
+    labels = [ascii(value[0] if isinstance(value, tuple) else value) for value, _ in prepared]
+    if limit:
+        labels = [text if len(text) <= limit else text[:limit] + "..." for text in labels]
+    width = max(len(text) for text in labels)
     print(f"\n{title}")
     print(f"{'input':<{width}}  {'expected':<10}  {'got':<10}  {'score':>5}  result")
     print("-" * (width + 40))
     passed = 0
-    for text, expected in cases:
-        got, score = check(text, bundle)
+    started = time.perf_counter()
+    for (value, expected), label in zip(prepared, labels):
+        got, score = check(value, bundle)
         ok = got == expected
         passed += ok
         # ascii() so Cyrillic letters show as а instead of looking exactly like the Latin ones
-        print(f"{ascii(text):<{width}}  {expected:<10}  {got:<10}  {score:>5}  {'PASS' if ok else 'FAIL'}")
-    print(f"{passed}/{len(cases)} passed")
+        print(f"{label:<{width}}  {expected:<10}  {got:<10}  {score:>5}  {'PASS' if ok else 'FAIL'}")
+    each = (time.perf_counter() - started) / len(cases) * 1000
+    print(f"{passed}/{len(cases)} passed  ({each:.1f} ms each)")
     return passed, len(cases)
 
 
@@ -561,6 +741,8 @@ def main():
         sys.exit(1)
 
     results = [run_cases("Links", LINK_CASES, check_link, bundle),
+               run_cases("Messages", MESSAGE_CASES, check_message_case, bundle, limit=72),
+               run_checks("Message details", check_sms, bundle),
                run_checks("Evidence", check_evidence, bundle),
                run_checks("Exports and command-line tool", check_exports, bundle),
                run_checks("Page comparison", check_pages, bundle),

@@ -35,6 +35,7 @@ Judged on closeness/probability scores, detection speed, ease of use and flexibl
 - `lookalikes.py`: `python lookalikes.py` writes `data/synthetic_pairs.csv` (gitignored; genuine, lookalike, attack_type).
 - `evaluate.py`: `python evaluate.py` prints detection per attack type, false alarms and speed, and writes `evaluation.json` (committed; the How it works tab shows it).
 - `page_compare.py`: optional saved-page comparison. Reads uploads only, fetches nothing, never changes the risk score.
+- `sms.py`: `check_message(text, sender, bundle)` for a pasted SMS / WhatsApp / email. Holds `find_links`, `deobfuscate`, `SIGNALS`, `check_sender`, `WHAT_TO_DO` and `MESSAGE_COLUMNS`. Must not import `app.py` or streamlit.
 
 ## Detection rules (`detector.py`)
 
@@ -72,7 +73,7 @@ Rules 1 to 5 are one group: only the first match counts, and the group is skippe
 UI (polished for the demo; dark theme set in `.streamlit/config.toml`: primary `#22C55E`, background `#0B0F14`, secondary `#111827`, text `#E5E7EB`):
 
 - Header: shield + "Kavach", tagline "Spot fake bank & shopping sites before you click", and "Works offline · Rules + Machine Learning". Footer: "Built by Team Ctrl-C-Ctrl-V · Hackfest 2026".
-- Three tabs: **Check a link**, **Check a list (CSV)**, **How it works**.
+- Four tabs: **Check a link**, **Check a message**, **Check a list (CSV)**, **How it works**.
 - **Check a link:**
   - Text input plus five example buttons (`paytrn.com`, `sbi-kyc-update-now.top`, `amazon.security-check.icu`, `rediit.com`, `google.com`; `rediit.com` is the amber example). A button callback writes the example into `st.session_state["link_input"]`, and the check runs on the rerun.
   - Large coloured verdict card (red Phishing 🚨, amber Suspicious ⚠️, green Safe ✅) with the final score and a custom HTML progress bar in the same colour.
@@ -82,8 +83,22 @@ UI (polished for the demo; dark theme set in `.streamlit/config.toml`: primary `
   - Reasons shown as small chips, then an expander to copy (`st.code`) or download the result as JSON.
   - "Compare page (optional)" expander: saved HTML gives content similarity %, screenshots give visual similarity %. A close copy on a different domain shows strong phishing evidence. The 70% content and 80% visual cut-offs are judgement calls.
 - **Check a list (CSV):** upload a CSV with a `domain` column or a text file with one domain per line (clear errors for bad files). Shows speed (domains, ms per domain, domains per second), summary counts (phishing / suspicious / safe), a results table with a red/amber/green verdict column, a Plotly donut chart and CSV, JSON and Excel downloads.
-- **How it works:** 3 steps (Rules, then ML, then Final verdict), the three scores, model metrics with data notes and a calibration table, the feature importance chart (`FEATURE_LABELS` in `app.py`), the synthetic test table, speed and output formats.
+- **Check a message:** text area plus an optional sender box, and five example buttons (`MESSAGE_EXAMPLES` in `app.py`: Bank KYC, Electricity, Lottery, Parcel, Genuine OTP). Shows the verdict card (Scam uses the Phishing colour via `VERDICT_COLORS`), three metrics (Wording score, Worst link score, Links found), the message with risky words marked in red (`highlight_message()`, every piece `html.escape`d), a table of the links found with each verdict and closeness, reason chips, the sender note, a "What to do" box when not Safe, and the result as JSON. An expander checks a CSV of messages.
+- **How it works:** 3 steps (Rules, then ML, then Final verdict), the message section, the three scores, model metrics with data notes and a calibration table, the feature importance chart (`FEATURE_LABELS` in `app.py`), the synthetic test table, speed and output formats.
 - UI rules of thumb: all user-supplied text put into HTML goes through `html.escape`; Plotly charts use `config={"displayModeBar": False}`; use `width="stretch"` (not `use_container_width`, which is deprecated in Streamlit 1.66); headings use `anchor=False`.
+
+## Message checking (`sms.py`)
+
+Verdicts are Scam / Suspicious / Safe at the same 60 / 30 thresholds. `final = max(link score, text score)`, plus 10 when the link score is ≥60 and the text score ≥30.
+
+- **Links:** `find_links()` makes two passes. The first reads the text as written, so each link has a span and can be highlighted; the second reads `deobfuscate(text)` and picks up hidden links, which have `span=None`. `deobfuscate` handles `hxxp`, `[.]`/`(.)`/`[dot]`, " dot " and a space before the dot. The space-before-dot rule is deliberate: ordinary writing never puts a space before a full stop, so "blocked today. Update" is not glued into `today.Update`, but "sbi-kyc . xyz" is joined. Each link then goes through `full_analysis()` unchanged.
+- **Shorteners** (`SHORTENERS`) cannot be expanded offline, so their link score is floored at 45 and they add +20 to the text score.
+- **Wording:** `SIGNALS` is a list of {name, points, reason, patterns}. Word stems are written `disconnect\w*`, never `disconnect\b`, which would miss "disconnected" — that bug silently disabled several signals once. A signal matching 2+ of its own patterns counts for half as much again.
+- **The genuine-OTP guard matters most.** Only a *request* counts ("share the OTP", "enter your UPI PIN to receive"), never a message that gives you one. Genuine bank OTPs must stay Safe, and `test_rules.py` has cases both ways.
+- **Brand mismatch** uses `without_links()`, which blanks every link out of the text (after de-obfuscation) before looking for brand names. Without it, `sbi-kyc.xyz` would itself prove the message "says SBI", which is circular and double-counts the domain check.
+- **Sender** (`check_sender`): `AD-SBIBNK`, optionally with a `-P`/`-S`/`-T`/`-G` category letter that operators add since May 2025. A mobile number only scores points when the message also names a brand. Soft on purpose: a sender is trivially faked.
+- **Helpline numbers in `WHAT_TO_DO` were checked in November 2026:** 1930 and cybercrime.gov.in for money already lost (1930 replaced 155260 in April 2022), and forwarding spam SMS to 1909. Re-check before changing them.
+- Not built: the optional TF-IDF text classifier. The rules handle the test set, and the UCI SMS Spam Collection is English marketing spam rather than Indian scams, so it would need heavy caveats.
 
 ## Machine-learning model
 
@@ -125,11 +140,12 @@ Added on the `ml-model` branch. The rule-based score above is kept; the model ad
 3. Polish the UI for the demo (done, see the UI description above).
 4. Prepare a demo flow: paste a fake link → red verdict with evidence box → upload a CSV → show speed and downloads.
 5. All five PS-08 deliverables are built (`deliverables` branch).
-6. Still open: one-typo fakes of 3-4 letter brands (`bsi.co.in`) are missed on purpose; `FREE_HOSTING` is still incomplete below the top 30; the model's signal is mostly address structure, not look-alikes. Synthetic tests: 1.7 ms per domain as a list, false alarms 5.8%.
+6. SMS scam check built on the `sms-check` branch (see the Message checking section).
+7. Still open: one-typo fakes of 3-4 letter brands (`bsi.co.in`) are missed on purpose; `FREE_HOSTING` is still incomplete below the top 30; the model's signal is mostly address structure, not look-alikes. Synthetic tests: 1.7 ms per domain as a list, false alarms 5.8%.
 
 ## How to work with me
 
 - Keep code simple and well commented. Add a new file only when one is really needed.
 - Test before saying something works.
-- Run python test_rules.py after every change.
+- Run python test_rules.py after every change (323 checks, about 35 seconds).
 - Give Windows commands (CMD or PowerShell), not Linux/Mac commands.
